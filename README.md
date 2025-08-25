@@ -24,7 +24,7 @@ You don’t need to install globally. Just use `npx`:
 npx create-bawo-frontend my-app
 ```
 
-npx @josephbawo/create-bawo-frontend my-app
+ 
 
 Options:
 --framework react|next Choose framework (default: react)
@@ -39,16 +39,28 @@ Options:
 
 🚀 Quick Start
 Default (React + Vite + JS)
+```npx create-bawo-frontend my-app -y
+```
 
-npx create-bawo-frontend my-app -y
-cd my-app
-npm run dev
+```cd my-app
+```
+
+```npm run dev
+```
 
 Next.js + TypeScript + shadcn/ui
-npx create-bawo-frontend my-next -y --framework next --ts --ui shadcn
+
+
+```npx create-bawo-frontend my-next -y --framework next --ts --ui shadcn
+```
 
 React + TS + Framer + GSAP
-npx create-bawo-frontend motion-lab -y --ts --framer --gsap
+
+
+```npx create-bawo-frontend motion-lab -y --ts --framer --gsap
+```
+
+
 
 ## 🗂 Project Structure (React Example)
 
