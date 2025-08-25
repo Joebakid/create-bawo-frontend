@@ -116,12 +116,51 @@ export default function GsapDemo() {
 }
 `.trim();
 
-// ---------- shadcn helper (idempotent) ----------
+// ---------- shadcn helper (idempotent + alias-first) ----------
 function setupShadcn(projectDir, { isVite }) {
   const componentsJsonPath = path.join(projectDir, "components.json");
   const hasComponentsJson = fs.existsSync(componentsJsonPath);
 
-  // deps (idempotent)
+  // (1) Ensure import alias BEFORE init (shadcn validates this)
+  if (isVite) {
+    // Vite/React: prefer @/* -> src/*
+    const tsconfigPath = path.join(projectDir, "tsconfig.json");
+    const jsconfigPath = path.join(projectDir, "jsconfig.json");
+    const cfgPath = fs.existsSync(tsconfigPath)
+      ? tsconfigPath
+      : jsconfigPath || tsconfigPath;
+    const cfg = fs.existsSync(cfgPath)
+      ? JSON.parse(read(cfgPath))
+      : { compilerOptions: {} };
+    cfg.compilerOptions = cfg.compilerOptions || {};
+    cfg.compilerOptions.baseUrl = ".";
+    cfg.compilerOptions.paths = {
+      ...(cfg.compilerOptions.paths || {}),
+      "@/*": ["src/*"],
+      "@/components/*": ["src/components/*"],
+      "@/lib/*": ["src/lib/*"],
+    };
+    write(cfgPath, JSON.stringify(cfg, null, 2));
+  } else {
+    // Next.js: @/* -> project root
+    const tsconfigPath = path.join(projectDir, "tsconfig.json");
+    const jsconfigPath = path.join(projectDir, "jsconfig.json");
+    const cfgPath = fs.existsSync(tsconfigPath)
+      ? tsconfigPath
+      : jsconfigPath || tsconfigPath;
+    const cfg = fs.existsSync(cfgPath)
+      ? JSON.parse(read(cfgPath))
+      : { compilerOptions: {} };
+    cfg.compilerOptions = cfg.compilerOptions || {};
+    cfg.compilerOptions.baseUrl = ".";
+    cfg.compilerOptions.paths = {
+      ...(cfg.compilerOptions.paths || {}),
+      "@/*": ["./*"],
+    };
+    write(cfgPath, JSON.stringify(cfg, null, 2));
+  }
+
+  // (2) Dependencies (safe to re-run)
   run(
     "npm",
     ["i", "class-variance-authority", "clsx", "tailwind-merge", "lucide-react"],
@@ -129,18 +168,17 @@ function setupShadcn(projectDir, { isVite }) {
   );
   run("npm", ["i", "-D", "tailwindcss-animate"], projectDir);
 
-  // utils.ts (idempotent)
+  // (3) utils.ts (idempotent)
   const libDir = isVite
     ? path.join(projectDir, "src", "lib")
     : path.join(projectDir, "lib");
   fs.mkdirSync(libDir, { recursive: true });
   write(path.join(libDir, "utils.ts"), CN_UTIL_TS);
 
-  // components.json (only init if missing)
+  // (4) Init only if components.json missing
   if (!hasComponentsJson) {
     console.log("• shadcn/ui: initializing…");
     run("npx", ["shadcn@latest", "init", "-y"], projectDir);
-
     // Fallback: if init didn't create it, write our default template
     if (!fs.existsSync(componentsJsonPath)) {
       write(
@@ -154,7 +192,7 @@ function setupShadcn(projectDir, { isVite }) {
     );
   }
 
-  // ensure tailwindcss-animate plugin in tailwind config (CJS)
+  // (5) Ensure tailwindcss-animate plugin in tailwind config (CJS)
   const twCfgPath = path.join(projectDir, "tailwind.config.cjs");
   if (fs.existsSync(twCfgPath)) {
     const tw = read(twCfgPath);
@@ -169,7 +207,7 @@ function setupShadcn(projectDir, { isVite }) {
     }
   }
 
-  // Add default components (safe to re-run)
+  // (6) Add default components (safe to re-run)
   console.log("• Adding shadcn/ui components (idempotent)...");
   run(
     "npx",
@@ -521,23 +559,6 @@ export const useAppStore = create<AppState>()(devtools(persist((set)=>({
     // shadcn/ui (idempotent)
     if (answers.ui === "shadcn") {
       setupShadcn(projectDir, { isVite: true });
-
-      // Vite path aliases (idempotent)
-      const tsconfigPath = path.join(
-        projectDir,
-        answers.ts ? "tsconfig.json" : "jsconfig.json"
-      );
-      const tsCfg = fs.existsSync(tsconfigPath)
-        ? JSON.parse(read(tsconfigPath))
-        : { compilerOptions: {} };
-      tsCfg.compilerOptions.baseUrl = ".";
-      tsCfg.compilerOptions.paths = {
-        ...(tsCfg.compilerOptions.paths || {}),
-        "@/*": ["src/*"],
-        "@/components/*": ["src/components/*"],
-        "@/lib/*": ["src/lib/*"],
-      };
-      write(tsconfigPath, JSON.stringify(tsCfg, null, 2));
     }
 
     // Framer / GSAP demos
@@ -698,31 +719,9 @@ export const useAppStore = create<AppState>()(devtools(persist((set)=>({
       );
     }
 
-    // shadcn/ui (idempotent)
+    // shadcn/ui (idempotent + alias-first)
     if (answers.ui === "shadcn") {
       setupShadcn(projectDir, { isVite: false });
-
-      // Next path aliases (idempotent)
-      const tsconfigPath = path.join(projectDir, "tsconfig.json");
-      if (fs.existsSync(tsconfigPath)) {
-        const tsCfg = JSON.parse(read(tsconfigPath));
-        tsCfg.compilerOptions = tsCfg.compilerOptions || {};
-        tsCfg.compilerOptions.baseUrl = ".";
-        tsCfg.compilerOptions.paths = {
-          ...(tsCfg.compilerOptions.paths || {}),
-          "@/*": ["./*"],
-        };
-        write(tsconfigPath, JSON.stringify(tsCfg, null, 2));
-      } else {
-        write(
-          path.join(projectDir, "jsconfig.json"),
-          JSON.stringify(
-            { compilerOptions: { baseUrl: ".", paths: { "@/*": ["./*"] } } },
-            null,
-            2
-          )
-        );
-      }
     }
 
     // Framer / GSAP demos
