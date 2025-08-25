@@ -71,13 +71,14 @@ my-app/
 │       └── GsapDemo.tsx
 
 
+
+
+```
+
 🧑‍💻 Author
 
 Joseph Bawo
 Scaffolding the future of frontend 🚀
-
-
-```
 
 GitHub: [joebakid](https://github.com/Joebakid/create-bawo-frontend)
 
