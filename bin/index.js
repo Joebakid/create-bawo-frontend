@@ -141,7 +141,7 @@ function setupShadcn(projectDir, { isVite }) {
     console.log("• shadcn/ui: initializing…");
     run("npx", ["shadcn@latest", "init", "-y"], projectDir);
 
-    // If for some reason it wasn't created, write a sane default
+    // Fallback: if init didn't create it, write our default template
     if (!fs.existsSync(componentsJsonPath)) {
       write(
         componentsJsonPath,
@@ -169,28 +169,23 @@ function setupShadcn(projectDir, { isVite }) {
     }
   }
 
-  // Add default components; skip if already present
+  // Add default components (safe to re-run)
   console.log("• Adding shadcn/ui components (idempotent)...");
-  const comps = [
-    "button",
-    "card",
-    "input",
-    "label",
-    "dialog",
-    "dropdown-menu",
-    "sheet",
-    "toast",
-  ];
-  const compsDir = isVite
-    ? path.join(projectDir, "src", "components")
-    : path.join(projectDir, "components");
-  fs.mkdirSync(compsDir, { recursive: true });
-
-  // We can't fully predict names per collection, so just call add with -y (shadcn handles overwrites interactively);
-  // the CLI will pass -y which auto-confirms.
   run(
     "npx",
-    ["shadcn@latest", "add", "-y", ...comps],
+    [
+      "shadcn@latest",
+      "add",
+      "-y",
+      "button",
+      "card",
+      "input",
+      "label",
+      "dialog",
+      "dropdown-menu",
+      "sheet",
+      "toast",
+    ],
     projectDir
   );
 }
