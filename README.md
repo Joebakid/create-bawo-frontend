@@ -26,7 +26,7 @@ npx create-bawo-frontend my-app
 
 ## ⚙️ CLI Options
 
-````text
+```text
 --framework react|next   Choose framework (default: react)
 --ts                     Use TypeScript (default: JavaScript)
 --ui shadcn              Add shadcn/ui preset
@@ -36,13 +36,14 @@ npx create-bawo-frontend my-app
 -y, --yes                Skip prompts; defaults + auto-start dev server
 -h, --help               Show this help
 -v, --version            Show CLI version
-
+```
 
 🚀 Quick Start
 Default (React + Vite + JS)
+
 ```bash
 npx create-bawo-frontend my-app -y
-````
+```
 
 ```bash
 cd my-app
