@@ -39,25 +39,30 @@ Options:
 
 🚀 Quick Start
 Default (React + Vite + JS)
-```npx create-bawo-frontend my-app -y
+```bash
+npx create-bawo-frontend my-app -y
 ```
 
-```cd my-app
+```bash
+cd my-app
 ```
 
-```npm run dev
+```bash
+npm run dev
 ```
 
 Next.js + TypeScript + shadcn/ui
 
 
-```npx create-bawo-frontend my-next -y --framework next --ts --ui shadcn
+```bash
+npx create-bawo-frontend my-next -y --framework next --ts --ui shadcn
 ```
 
 React + TS + Framer + GSAP
 
 
-```npx create-bawo-frontend motion-lab -y --ts --framer --gsap
+```bash
+npx create-bawo-frontend motion-lab -y --ts --framer --gsap
 ```
 
 
