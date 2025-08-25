@@ -50,6 +50,9 @@ npx create-bawo-frontend my-next -y --framework next --ts --ui shadcn
 React + TS + Framer + GSAP
 npx create-bawo-frontend motion-lab -y --ts --framer --gsap
 
+## 🗂 Project Structure (React Example)
+
+```text
 my-app/
 ├── index.html
 ├── package.json
@@ -57,15 +60,16 @@ my-app/
 ├── tailwind.config.cjs
 ├── tsconfig.json (if TS)
 ├── src/
-│ ├── main.tsx
-│ ├── App.tsx
-│ ├── styles/
-│ │ └── index.css
-│ ├── stores/
-│ │ └── useAppStore.ts
-│ └── components/demo/
-│ ├── FramerDemo.tsx
-│ └── GsapDemo.tsx
+│   ├── main.tsx
+│   ├── App.tsx
+│   ├── styles/
+│   │   └── index.css
+│   ├── stores/
+│   │   └── useAppStore.ts
+│   └── components/demo/
+│       ├── FramerDemo.tsx
+│       └── GsapDemo.tsx
+
 
 🧑‍💻 Author
 
@@ -75,3 +79,4 @@ Scaffolding the future of frontend 🚀
 GitHub: [joebakid](https://github.com/Joebakid/create-bawo-frontend)
 
 npm: [josephbawo](https://www.npmjs.com/~josephbawo)
+```
