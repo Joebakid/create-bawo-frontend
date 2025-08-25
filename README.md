@@ -76,7 +76,9 @@ my-app/
 Joseph Bawo
 Scaffolding the future of frontend 🚀
 
+
+```
+
 GitHub: [joebakid](https://github.com/Joebakid/create-bawo-frontend)
 
 npm: [josephbawo](https://www.npmjs.com/~josephbawo)
-```
