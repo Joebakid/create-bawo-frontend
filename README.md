@@ -23,3 +23,55 @@ You don’t need to install globally. Just use `npx`:
 ```bash
 npx create-bawo-frontend my-app
 ```
+
+npx @josephbawo/create-bawo-frontend my-app
+
+Options:
+--framework react|next Choose framework (default: react)
+--ts Use TypeScript (default: JavaScript)
+--ui shadcn Add shadcn/ui preset
+--framer Add framer-motion + demo
+--gsap Add GSAP + demo
+--no-start Prevent auto-start (useful in CI)
+-y, --yes Skip prompts; defaults + auto-start dev server
+-h, --help Show this help
+-v, --version Show CLI version
+
+🚀 Quick Start
+Default (React + Vite + JS)
+
+npx create-bawo-frontend my-app -y
+cd my-app
+npm run dev
+
+Next.js + TypeScript + shadcn/ui
+npx create-bawo-frontend my-next -y --framework next --ts --ui shadcn
+
+React + TS + Framer + GSAP
+npx create-bawo-frontend motion-lab -y --ts --framer --gsap
+
+my-app/
+├── index.html
+├── package.json
+├── postcss.config.cjs
+├── tailwind.config.cjs
+├── tsconfig.json (if TS)
+├── src/
+│ ├── main.tsx
+│ ├── App.tsx
+│ ├── styles/
+│ │ └── index.css
+│ ├── stores/
+│ │ └── useAppStore.ts
+│ └── components/demo/
+│ ├── FramerDemo.tsx
+│ └── GsapDemo.tsx
+
+🧑‍💻 Author
+
+Joseph Bawo
+Scaffolding the future of frontend 🚀
+
+GitHub: [joebakid](https://github.com/Joebakid/create-bawo-frontend)
+
+npm: [josephbawo](https://www.npmjs.com/~josephbawo)
