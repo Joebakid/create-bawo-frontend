@@ -24,24 +24,25 @@ You don’t need to install globally. Just use `npx`:
 npx create-bawo-frontend my-app
 ```
 
- 
+## ⚙️ CLI Options
 
-Options:
---framework react|next Choose framework (default: react)
---ts Use TypeScript (default: JavaScript)
---ui shadcn Add shadcn/ui preset
---framer Add framer-motion + demo
---gsap Add GSAP + demo
---no-start Prevent auto-start (useful in CI)
--y, --yes Skip prompts; defaults + auto-start dev server
--h, --help Show this help
--v, --version Show CLI version
+````text
+--framework react|next   Choose framework (default: react)
+--ts                     Use TypeScript (default: JavaScript)
+--ui shadcn              Add shadcn/ui preset
+--framer                 Add framer-motion + demo
+--gsap                   Add GSAP + demo
+--no-start               Prevent auto-start (useful in CI)
+-y, --yes                Skip prompts; defaults + auto-start dev server
+-h, --help               Show this help
+-v, --version            Show CLI version
+
 
 🚀 Quick Start
 Default (React + Vite + JS)
 ```bash
 npx create-bawo-frontend my-app -y
-```
+````
 
 ```bash
 cd my-app
@@ -53,19 +54,15 @@ npm run dev
 
 Next.js + TypeScript + shadcn/ui
 
-
 ```bash
 npx create-bawo-frontend my-next -y --framework next --ts --ui shadcn
 ```
 
 React + TS + Framer + GSAP
 
-
 ```bash
 npx create-bawo-frontend motion-lab -y --ts --framer --gsap
 ```
-
-
 
 ## 🗂 Project Structure (React Example)
 
