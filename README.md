@@ -56,13 +56,13 @@ npm run dev
 Next.js + TypeScript + shadcn/ui
 
 ```bash
-npx create-bawo-frontend my-next -y --framework next --ts --ui shadcn
+npx create-bawo-frontend my-app -y --framework next --ts --ui shadcn
 ```
 
 React + TS + Framer + GSAP
 
 ```bash
-npx create-bawo-frontend motion-lab -y --ts --framer --gsap
+npx create-bawo-frontend my-app -y --ts --framer --gsap
 ```
 
 ## 🗂 Project Structure (React Example)
