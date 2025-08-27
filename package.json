@@ -1,7 +1,9 @@
 {
   "name": "create-bawo-frontend",
+ 
   "version": "2.2.0",
   "description": "Scaffold React (Vite) or Next.js with Tailwind, Zustand or Redux Toolkit, optional shadcn/ui, Framer Motion, GSAP, RTK Query, React Query, SWR, and Router.",
+ 
   "bin": {
     "create-bawo-frontend": "bin/index.js"
   },
