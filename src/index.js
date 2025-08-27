@@ -63,25 +63,10 @@ function parseFlags(args) {
   const wantContext = args.includes("--context");
 
   return {
-    nameArg,
-    yes,
-    framework,
-    tsFlag,
-    noStartFlag,
-
-    wantRedux,
-    zustandDefault,
-
-    ptFlag,
-    wantShadcn,
-    wantFramer,
-    wantGsap,
-
-    wantRTKQuery,
-    wantReactQuery,
-    wantSWR,
-    wantRouter,
-    wantContext,
+    nameArg, yes, framework, tsFlag, noStartFlag,
+    wantRedux, zustandDefault,
+    ptFlag, wantShadcn, wantFramer, wantGsap,
+    wantRTKQuery, wantReactQuery, wantSWR, wantRouter, wantContext,
   };
 }
 
@@ -114,6 +99,7 @@ async function getAnswersFromUser(flags) {
         message: "State Management & Data Fetching?",
         hint: "Space to select",
         choices: [
+          // Zustand preselected ONLY if Redux wasn't hinted via CLI
           { title: "Zustand (lightweight)", value: "zustand", selected: !wantRedux && zustandDefault },
           { title: "Redux Toolkit", value: "redux", selected: wantRedux },
           { title: "RTK Query", value: "rtkQuery", selected: wantRTKQuery },
@@ -146,9 +132,12 @@ async function getAnswersFromUser(flags) {
     { onCancel: () => process.exit(1) },
   );
 
-  const stateLibs = resp.stateLibs || [];
-  const pickedRedux = stateLibs.includes("redux");
-  const pickedZustand = stateLibs.includes("zustand") && !pickedRedux; // mutual exclusion
+  // --- ROBUST EXCLUSIVITY ---
+  const selected = new Set(resp.stateLibs || []);
+  if (selected.has("redux")) selected.delete("zustand"); // Redux wins, always
+
+  const pickedRedux = selected.has("redux");
+  const pickedZustand = selected.has("zustand");
 
   return {
     name: flags.nameArg !== "." ? flags.nameArg : resp.name || "my-frontend-app",
@@ -156,10 +145,10 @@ async function getAnswersFromUser(flags) {
     ts: !!resp.ts,
     zustand: pickedZustand,
     redux: pickedRedux,
-    rtkQuery: stateLibs.includes("rtkQuery"),
-    reactQuery: stateLibs.includes("reactQuery"),
-    swr: stateLibs.includes("swr"),
-    context: stateLibs.includes("context"),
+    rtkQuery: selected.has("rtkQuery"),
+    reactQuery: selected.has("reactQuery"),
+    swr: selected.has("swr"),
+    context: selected.has("context"),
     router: !!resp.router,
     pt: !!resp.pt,
     ui: resp.ui || "none",
@@ -187,6 +176,7 @@ function getAnswersFromFlags(flags) {
     gsap: flags.wantGsap,
     autoStart: !flags.noStartFlag,
   };
+  // --- SAFETY: flags path too ---
   if (a.redux) a.zustand = false;
   return a;
 }
@@ -198,6 +188,9 @@ async function run() {
 
   const flags = parseFlags(args);
   const answers = flags.yes ? getAnswersFromFlags(flags) : await getAnswersFromUser(flags);
+
+  // Final safety net: never scaffold Zustand when Redux is on
+  if (answers.redux && answers.zustand) answers.zustand = false;
 
   const projectDir = path.resolve(process.cwd(), answers.name);
   ensure(projectDir);
