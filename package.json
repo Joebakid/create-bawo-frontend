@@ -1,13 +1,13 @@
 {
   "name": "create-bawo-frontend",
-  "version": "2.0.0",
-  "description": "Scaffold React (Vite) or Next.js with Tailwind, Zustand, Prettier, optional shadcn/ui, Framer Motion, and GSAP.",
+  "version": "2.2.0",
+  "description": "Scaffold React (Vite) or Next.js with Tailwind, Zustand or Redux Toolkit, optional shadcn/ui, Framer Motion, GSAP, RTK Query, React Query, SWR, and Router.",
   "bin": {
     "create-bawo-frontend": "bin/index.js"
   },
   "files": [
     "bin",
-    "templates",
+    "src",
     "README.md",
     "LICENSE"
   ],
@@ -17,8 +17,10 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
-    "chalk": "^5.3.0",
     "prompts": "^2.4.2"
   },
   "keywords": [
@@ -26,9 +28,14 @@
     "vite",
     "react",
     "nextjs",
-    "tailwindcss@3.4.14",
+    "tailwindcss",
     "zustand",
-    "shadcn",
+    "redux",
+    "redux-toolkit",
+    "rtk-query",
+    "react-query",
+    "swr",
+    "shadcn-ui",
     "framer-motion",
     "gsap",
     "starter",
