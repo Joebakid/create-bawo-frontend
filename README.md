@@ -18,6 +18,7 @@
 - 🔥 **Auto-start dev server** for immediate development
 - 📦 **Zero configuration** - works out of the box
 - 🎯 **TypeScript support** with proper configurations
+- 🎯 **State Management** Zustand (lightweight), Redux Toolkit( ) RTK Query( ) React Query( ) SWR( ) Context API + useReducer
 
 ---
 
@@ -25,11 +26,11 @@
 
 You don't need to install globally. Just use `npx`:
 
-\`\`\`bash
+```bash
 npx create-bawo-frontend my-app -y
 cd my-app
 npm run dev
-\`\`\`
+```
 
 That's it! Your development server will start automatically.
 
@@ -39,23 +40,23 @@ That's it! Your development server will start automatically.
 
 ### Basic Usage
 
-\`\`\`bash
+```bash
 npx create-bawo-frontend <project-name> [options]
-\`\`\`
+```
 
 ### Interactive Mode
 
-\`\`\`bash
+```bash
 npx create-bawo-frontend my-app
-\`\`\`
+```
 
 The CLI will prompt you to choose your preferred options.
 
 ### Quick Mode (Skip Prompts)
 
-\`\`\`bash
+```bash
 npx create-bawo-frontend my-app -y
-\`\`\`
+```
 
 Uses sensible defaults and starts the dev server automatically.
 
@@ -82,21 +83,21 @@ Uses sensible defaults and starts the dev server automatically.
 
 ### React with TypeScript and Redux Toolkit
 
-\`\`\`bash
+```bash
 npx create-bawo-frontend my-app --framework react --ts --state-mgmt redux -y
-\`\`\`
+```
 
 ### Next.js with React Query and animations
 
-\`\`\`bash
+```bash
 npx create-bawo-frontend my-app --framework next --state-mgmt react-query --framer --gsap -y
-\`\`\`
+```
 
 ### Full-featured setup with RTK Query
 
-\`\`\`bash
+```bash
 npx create-bawo-frontend my-app --framework next --ts --state-mgmt rtk-query --ui shadcn --framer --gsap -y
-\`\`\`
+```
 
 ---
 
