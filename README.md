@@ -18,7 +18,7 @@
 - 🔥 **Auto-start dev server** for immediate development
 - 📦 **Zero configuration** - works out of the box
 - 🎯 **TypeScript support** with proper configurations
-- 🎯 **State Management** Zustand (lightweight), Redux Toolkit( ) RTK Query( ) React Query( ) SWR( ) Context API + useReducer
+ 
 
 ---
 
