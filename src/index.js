@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+const fs = require("fs");
 const prompts = require("prompts");
 const { path, write, ensure, run: exec, pkgVersion } = require("./utils");
 const { scaffoldReact } = require("./scaffold/react");
@@ -13,8 +14,8 @@ USAGE:
 OPTIONS:
   --framework react|next   Choose framework (default: react)
   --ts                     Use TypeScript (default: JavaScript)
-  --zustand                Include Zustand (skips prompt). If --redux is also set, Redux wins unless --zustand is given.
-  --no-zustand             Do not include Zustand (useful with -y).
+  --zustand                Include Zustand
+  --no-zustand             Do not include Zustand
   --ui shadcn              Add shadcn/ui preset
   --framer                 Add framer-motion + demo
   --gsap                   Add GSAP + demo
@@ -47,8 +48,9 @@ function parseFlags(args) {
   const explicitZustand = args.includes("--zustand");
   const noZustand = args.includes("--no-zustand");
   const wantRedux = args.includes("--redux");
-  // In -y mode: Redux wins unless --zustand explicitly passed
-  const zustandDefault = explicitZustand ? true : (wantRedux ? false : !noZustand);
+
+  // default: none (interactive); in -y path we honor flags
+  const zustandDefault = explicitZustand ? true : false;
 
   const ptFlag = !args.includes("--no-prettier-tailwind");
   const uiIdx = args.findIndex((a) => a === "--ui");
@@ -64,12 +66,13 @@ function parseFlags(args) {
 
   return {
     nameArg, yes, framework, tsFlag, noStartFlag,
-    wantRedux, zustandDefault,
+    wantRedux, zustandDefault, noZustand,
     ptFlag, wantShadcn, wantFramer, wantGsap,
     wantRTKQuery, wantReactQuery, wantSWR, wantRouter, wantContext,
   };
 }
 
+// --- interactive flow: select ONE state lib + multi for data libs ---
 async function getAnswersFromUser(flags) {
   const {
     nameArg, framework, tsFlag, zustandDefault, wantRedux,
@@ -93,23 +96,37 @@ async function getAnswersFromUser(flags) {
         initial: framework === "next" ? 1 : 0,
       },
       { type: "toggle", name: "ts", message: "Use TypeScript?", initial: tsFlag, active: "yes", inactive: "no" },
+
+      // 🔁 NEW: single-choice select for state management
+      {
+        type: "select",
+        name: "stateLib",
+        message: "Primary state management?",
+        choices: [
+          { title: "None", value: "none" },
+          { title: "Redux Toolkit", value: "redux" },
+          { title: "Zustand (lightweight)", value: "zustand" },
+        ],
+        // initial selection: prefer Redux if hinted via CLI; else Zustand if explicitly requested; else None
+        initial: wantRedux ? 1 : (zustandDefault ? 2 : 0),
+      },
+
+      // Keep other data libs as multi-select (space to toggle)
       {
         type: "multiselect",
-        name: "stateLibs",
-        message: "State Management & Data Fetching?",
+        name: "dataLibs",
+        message: "Data fetching & extras?",
         hint: "Space to select",
         choices: [
-          // Zustand preselected ONLY if Redux wasn't hinted via CLI
-          { title: "Zustand (lightweight)", value: "zustand", selected: !wantRedux && zustandDefault },
-          { title: "Redux Toolkit", value: "redux", selected: wantRedux },
-          { title: "RTK Query", value: "rtkQuery", selected: wantRTKQuery },
-          { title: "React Query", value: "reactQuery", selected: wantReactQuery },
-          { title: "SWR", value: "swr", selected: wantSWR },
-          { title: "Context API + useReducer", value: "context", selected: wantContext },
+          { title: "RTK Query", value: "rtkQuery", selected: !!wantRTKQuery },
+          { title: "React Query", value: "reactQuery", selected: !!wantReactQuery },
+          { title: "SWR", value: "swr", selected: !!wantSWR },
+          { title: "Context API + useReducer", value: "context", selected: !!wantContext },
         ],
       },
-      { type: "toggle", name: "router", message: "Add React Router?", initial: wantRouter, active: "yes", inactive: "no" },
-      { type: "toggle", name: "pt", message: "Add Prettier + Tailwind plugin?", initial: ptFlag, active: "yes", inactive: "no" },
+
+      { type: "toggle", name: "router", message: "Add React Router?", initial: !!wantRouter, active: "yes", inactive: "no" },
+      { type: "toggle", name: "pt", message: "Add Prettier + Tailwind plugin?", initial: !!ptFlag, active: "yes", inactive: "no" },
       {
         type: "select",
         name: "ui",
@@ -123,8 +140,8 @@ async function getAnswersFromUser(flags) {
         message: "Animation libraries?",
         hint: "Space to select",
         choices: [
-          { title: "Framer Motion", value: "framer", selected: wantFramer },
-          { title: "GSAP", value: "gsap", selected: wantGsap },
+          { title: "Framer Motion", value: "framer", selected: !!wantFramer },
+          { title: "GSAP", value: "gsap", selected: !!wantGsap },
         ],
       },
       { type: "toggle", name: "autoStart", message: "Start dev server after install?", initial: false, active: "yes", inactive: "no" },
@@ -132,23 +149,25 @@ async function getAnswersFromUser(flags) {
     { onCancel: () => process.exit(1) },
   );
 
-  // --- ROBUST EXCLUSIVITY ---
-  const selected = new Set(resp.stateLibs || []);
-  if (selected.has("redux")) selected.delete("zustand"); // Redux wins, always
+  const reduxChosen = resp.stateLib === "redux";
+  const zustandChosen = resp.stateLib === "zustand";
 
-  const pickedRedux = selected.has("redux");
-  const pickedZustand = selected.has("zustand");
+  const dataSet = new Set(resp.dataLibs || []);
 
   return {
     name: flags.nameArg !== "." ? flags.nameArg : resp.name || "my-frontend-app",
     framework: resp.framework || flags.framework,
     ts: !!resp.ts,
-    zustand: pickedZustand,
-    redux: pickedRedux,
-    rtkQuery: selected.has("rtkQuery"),
-    reactQuery: selected.has("reactQuery"),
-    swr: selected.has("swr"),
-    context: selected.has("context"),
+
+    // exclusivity guaranteed by select
+    redux: reduxChosen,
+    zustand: zustandChosen,
+
+    rtkQuery: dataSet.has("rtkQuery"),
+    reactQuery: dataSet.has("reactQuery"),
+    swr: dataSet.has("swr"),
+    context: dataSet.has("context"),
+
     router: !!resp.router,
     pt: !!resp.pt,
     ui: resp.ui || "none",
@@ -158,27 +177,52 @@ async function getAnswersFromUser(flags) {
   };
 }
 
+// --- non-interactive ( -y ) path uses flags directly ---
 function getAnswersFromFlags(flags) {
   const a = {
     name: flags.nameArg,
     framework: flags.framework || "react",
     ts: flags.tsFlag || false,
-    zustand: flags.zustandDefault,
-    redux: flags.wantRedux,
-    rtkQuery: flags.wantRTKQuery,
-    reactQuery: flags.wantReactQuery,
-    swr: flags.wantSWR,
-    context: flags.wantContext,
-    router: flags.wantRouter,
-    pt: flags.ptFlag,
+    // default OFF unless explicitly requested
+    zustand: !!flags.zustandDefault,
+    redux: !!flags.wantRedux,
+    rtkQuery: !!flags.wantRTKQuery,
+    reactQuery: !!flags.wantReactQuery,
+    swr: !!flags.wantSWR,
+    context: !!flags.wantContext,
+    router: !!flags.wantRouter,
+    pt: !!flags.ptFlag,
     ui: flags.wantShadcn ? "shadcn" : "none",
-    framer: flags.wantFramer,
-    gsap: flags.wantGsap,
+    framer: !!flags.wantFramer,
+    gsap: !!flags.wantGsap,
     autoStart: !flags.noStartFlag,
   };
-  // --- SAFETY: flags path too ---
-  if (a.redux) a.zustand = false;
+  if (a.redux) a.zustand = false; // safety
   return a;
+}
+
+// purge zustand if it slipped in
+function removeZustandArtifacts(projectDir) {
+  const candidates = [
+    ["src", "stores"],
+    ["store", "useAppStore.ts"],
+    ["store", "useAppStore.js"],
+  ];
+  for (const parts of candidates) {
+    const p = path.join(projectDir, ...parts);
+    if (fs.existsSync(p)) fs.rmSync(p, { recursive: true, force: true });
+  }
+  const pkgPath = path.join(projectDir, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+    let changed = false;
+    if (pkg.dependencies?.zustand) { delete pkg.dependencies.zustand; changed = true; }
+    if (pkg.devDependencies?.zustand) { delete pkg.devDependencies.zustand; changed = true; }
+    if (changed) {
+      write(pkgPath, JSON.stringify(pkg, null, 2));
+      try { exec("npm", ["uninstall", "zustand"], projectDir); } catch {}
+    }
+  }
 }
 
 async function run() {
@@ -189,7 +233,7 @@ async function run() {
   const flags = parseFlags(args);
   const answers = flags.yes ? getAnswersFromFlags(flags) : await getAnswersFromUser(flags);
 
-  // Final safety net: never scaffold Zustand when Redux is on
+  // final safety: Redux beats Zustand
   if (answers.redux && answers.zustand) answers.zustand = false;
 
   const projectDir = path.resolve(process.cwd(), answers.name);
@@ -197,13 +241,16 @@ async function run() {
 
   // base package.json
   const pkgPath = path.join(projectDir, "package.json");
-  if (!require("fs").existsSync(pkgPath)) {
+  if (!fs.existsSync(pkgPath)) {
     write(pkgPath, JSON.stringify({ name: path.basename(projectDir), private: true, version: "0.0.0" }, null, 2));
   }
 
   // scaffold
   if (answers.framework === "react") scaffoldReact(projectDir, answers);
   else scaffoldNext(projectDir, answers);
+
+  // hard guard
+  if (answers.redux) removeZustandArtifacts(projectDir);
 
   // finalize
   write(path.join(projectDir, ".gitignore"), "node_modules\ndist\n.next\n.env\n.DS_Store\nbuild\n");
