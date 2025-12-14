@@ -171,7 +171,7 @@ _Scaffolding the future of frontend development_
 
 - GitHub: [@Joebakid](https://github.com/Joebakid)
 - npm: [josephbawo](https://www.npmjs.com/~josephbawo)
-- Website: [https://www.josephbawo.tech/blog/significance-of-npx-create-bawo-frontend](https://www.josephbawo.tech/blog/significance-of-npx-create-bawo-frontend)
+- Website: [https://create-bawo-frontend.vercel.app/](https://create-bawo-frontend.vercel.app/)
 
 ---
 
