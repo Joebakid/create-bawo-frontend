@@ -4,8 +4,26 @@ const T = require("../templates");
 const { setupShadcn } = require("../setup/shadcn");
 
 function scaffoldReact(projectDir, answers) {
+  const isTW4 = answers.tailwind === "v4";
+
+  console.log(
+    isTW4
+      ? "⚡ Using Tailwind CSS v4 (explicit opt-in)"
+      : "✅ Using Tailwind CSS v3 (default, stable)"
+  );
+
+  // --------------------
+  // Dependencies
+  // --------------------
   const deps = ["react", "react-dom"];
-  const dev = ["vite", "@vitejs/plugin-react", "tailwindcss@3.4.14", "postcss", "autoprefixer"];
+  const dev = ["vite", "@vitejs/plugin-react"];
+
+  if (isTW4) {
+    dev.push("tailwindcss@latest", "@tailwindcss/vite", "postcss");
+  } else {
+    dev.push("tailwindcss@3.4.14", "postcss", "autoprefixer");
+  }
+
   if (answers.ts) dev.push("typescript", "@types/react", "@types/react-dom");
   if (answers.redux || answers.rtkQuery) deps.push("@reduxjs/toolkit", "react-redux");
   if (answers.reactQuery) deps.push("@tanstack/react-query");
@@ -15,148 +33,182 @@ function scaffoldReact(projectDir, answers) {
   run("npm", ["i", ...deps], projectDir);
   run("npm", ["i", "-D", ...dev], projectDir);
 
-  write(path.join(projectDir, "vite.config.ts"), `
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-export default defineConfig({ plugins: [react()] });
-`.trimStart());
+  // --------------------
+  // Vite config
+  // --------------------
+  write(
+    path.join(projectDir, "vite.config.ts"),
+    isTW4
+      ? `
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+});
+`.trimStart()
+      : `
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+});
+`.trimStart()
+  );
+
+  // --------------------
+  // package.json scripts
+  // --------------------
   const pkgPath = path.join(projectDir, "package.json");
   const pkg = JSON.parse(read(pkgPath));
-  pkg.scripts = { ...(pkg.scripts || {}), dev: "vite", build: "vite build", preview: "vite preview", lint: 'echo "(add eslint if you want)" && exit 0', format: 'echo "(add prettier if you want)" && exit 0' };
+  pkg.scripts = {
+    ...(pkg.scripts || {}),
+    dev: "vite",
+    build: "vite build",
+    preview: "vite preview",
+    lint: 'echo "(add eslint if you want)" && exit 0',
+    format: 'echo "(add prettier if you want)" && exit 0',
+  };
   write(pkgPath, JSON.stringify(pkg, null, 2));
 
-  write(path.join(projectDir, "index.html"), `
+  // --------------------
+  // index.html
+  // --------------------
+  write(
+    path.join(projectDir, "index.html"),
+    `
 <!doctype html>
 <html lang="en">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Vite + React + Tailwind</title></head>
-  <body class="min-h-screen bg-white text-gray-900"><div id="root"></div><script type="module" src="/src/main.${answers.ts ? "tsx" : "jsx"}"></script></body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React + Tailwind</title>
+  </head>
+  <body class="min-h-screen bg-white text-gray-900">
+    <div id="root"></div>
+    <script type="module" src="/src/main.${answers.ts ? "tsx" : "jsx"}"></script>
+  </body>
 </html>
-`.trimStart());
+`.trimStart()
+  );
 
-  // Tailwind
-  write(path.join(projectDir, "tailwind.config.cjs"), `module.exports = { content: ["./index.html","./src/**/*.{js,ts,jsx,tsx}"], theme: { extend: {} }, plugins: [] };`);
-  write(path.join(projectDir, "postcss.config.cjs"), `module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };`);
-  write(path.join(projectDir, "src/styles/index.css"), `@tailwind base;\n@tailwind components;\n@tailwind utilities;`);
+  // --------------------
+  // Tailwind setup
+  // --------------------
+  ensure(path.join(projectDir, "src", "styles"));
 
-  // main.jsx(x)
+  if (!isTW4) {
+    write(
+      path.join(projectDir, "tailwind.config.cjs"),
+      `module.exports = {
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  theme: { extend: {} },
+  plugins: [],
+};`
+    );
+
+    write(
+      path.join(projectDir, "postcss.config.cjs"),
+      `module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};`
+    );
+  }
+
+  write(
+    path.join(projectDir, "src/styles/index.css"),
+    isTW4
+      ? `@import "tailwindcss";`
+      : `@tailwind base;
+@tailwind components;
+@tailwind utilities;`
+  );
+
+  // --------------------
+  // main.jsx / tsx
+  // --------------------
   let main = `
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles/index.css";
 `;
-  if (answers.redux || answers.rtkQuery) main += `import { Provider } from "react-redux";\nimport { store } from "./store/store";\n`;
-  if (answers.reactQuery) main += `import { QueryClient, QueryClientProvider } from "@tanstack/react-query";\nconst queryClient = new QueryClient();\n`;
-  if (answers.context) main += `import { ThemeProvider } from "./components/demo/ContextDemo";\n`;
+
+  if (answers.redux || answers.rtkQuery) {
+    main += `import { Provider } from "react-redux";
+import { store } from "./store/store";
+`;
+  }
+
+  if (answers.reactQuery) {
+    main += `import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+const queryClient = new QueryClient();
+`;
+  }
+
+  if (answers.context) {
+    main += `import { ThemeProvider } from "./components/demo/ContextDemo";
+`;
+  }
+
   main += `
 const root = createRoot(document.getElementById("root"));
 root.render(
-  <React.StrictMode>`;
-  if (answers.redux || answers.rtkQuery) main += `\n    <Provider store={store}>`;
-  if (answers.reactQuery) main += `\n      <QueryClientProvider client={queryClient}>`;
-  if (answers.context) main += `\n        <ThemeProvider>`;
-  main += `\n          <App />`;
-  if (answers.context) main += `\n        </ThemeProvider>`;
-  if (answers.reactQuery) main += `\n      </QueryClientProvider>`;
-  if (answers.redux || answers.rtkQuery) main += `\n    </Provider>`;
-  main += `\n  </React.StrictMode>\n);`;
+  <React.StrictMode>
+`;
+
+  if (answers.redux || answers.rtkQuery) main += `    <Provider store={store}>\n`;
+  if (answers.reactQuery) main += `      <QueryClientProvider client={queryClient}>\n`;
+  if (answers.context) main += `        <ThemeProvider>\n`;
+
+  main += `          <App />\n`;
+
+  if (answers.context) main += `        </ThemeProvider>\n`;
+  if (answers.reactQuery) main += `      </QueryClientProvider>\n`;
+  if (answers.redux || answers.rtkQuery) main += `    </Provider>\n`;
+
+  main += `  </React.StrictMode>
+);
+`;
+
   write(path.join(projectDir, "src", `main.${answers.ts ? "tsx" : "jsx"}`), main.trimStart());
 
-  // App.jsx(x)
-  let appImports = `${answers.ts ? "import type {} from 'react';" : ""}`;
-  const demos = [];
-  if (answers.redux) { appImports += `\nimport ReduxDemo from "./components/demo/ReduxDemo";`; demos.push("<ReduxDemo />"); }
-  if (answers.rtkQuery) { appImports += `\nimport RTKQueryDemo from "./components/demo/RTKQueryDemo";`; demos.push("<RTKQueryDemo />"); }
-  if (answers.reactQuery) { appImports += `\nimport ReactQueryDemo from "./components/demo/ReactQueryDemo";`; demos.push("<ReactQueryDemo />"); }
-  if (answers.swr) { appImports += `\nimport SWRDemo from "./components/demo/SWRDemo";`; demos.push("<SWRDemo />"); }
-  if (answers.router) { appImports += `\nimport RouterDemo from "./components/demo/RouterDemo";`; demos.push("<RouterDemo />"); }
-  if (answers.context) { appImports += `\nimport ContextDemo from "./components/demo/ContextDemo";`; demos.push("<ContextDemo />"); }
-  appImports += `\nimport UseStateDemo from "./components/demo/UseStateDemo";`; demos.push("<UseStateDemo />");
-
-  write(path.join(projectDir, "src", `App.${answers.ts ? "tsx" : "jsx"}`), `
-${appImports}
+  // --------------------
+  // App.jsx / tsx
+  // --------------------
+  write(
+    path.join(projectDir, "src", `App.${answers.ts ? "tsx" : "jsx"}`),
+    `
 export default function App() {
   return (
     <main className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold">Hello 👋 React + Vite + Tailwind (${answers.ts ? "TS" : "JS"})</h1>
-      <p className="mt-3 text-gray-600">Edit <code className="px-1 rounded bg-gray-200">src/App.${answers.ts ? "tsx" : "jsx"}</code>.</p>
-      <div className="space-y-4">
-        ${demos.join("\n        ")}
-      </div>
+      <h1 className="text-3xl font-bold">
+        Hello 👋 React + Vite + Tailwind (${answers.ts ? "TS" : "JS"})
+      </h1>
+      <p className="mt-3 text-gray-600">
+        Tailwind version: ${isTW4 ? "v4" : "v3"}
+      </p>
     </main>
   );
 }
-`.trimStart());
+`.trimStart()
+  );
 
-  // tsconfig
-  if (answers.ts) {
-    write(path.join(projectDir, "tsconfig.json"), JSON.stringify({
-      compilerOptions: { target: "ES2022", lib: ["ES2022", "DOM", "DOM.Iterable"], module: "ESNext", jsx: "react-jsx", moduleResolution: "Bundler", strict: true, skipLibCheck: true, esModuleInterop: true, noEmit: true },
-      include: ["src"],
-    }, null, 2));
+  // --------------------
+  // shadcn/ui guard
+  // --------------------
+  if (answers.ui === "shadcn") {
+    if (isTW4) {
+      console.warn("⚠️ shadcn/ui is not compatible with Tailwind v4 yet. Skipping.");
+    } else {
+      setupShadcn(projectDir, { isVite: true });
+    }
   }
-
-  // Redux & RTK Query wires
-  if (answers.redux || answers.rtkQuery) {
-    ensure(path.join(projectDir, "src", "store"));
-    let storeContent = T.REDUX_STORE_JS;
-    if (answers.rtkQuery) storeContent += `\nimport { api } from './api';\n`;
-    const apiReducer = answers.rtkQuery ? `\n    [api.reducerPath]: api.reducer,` : "";
-    const apiMiddleware = answers.rtkQuery ? `\n  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(api.middleware),` : "";
-    storeContent += "\n" + T.REDUX_STORE_JS_TAIL.replace("{{API_REDUCER}}", apiReducer).replace("{{API_MIDDLEWARE}}", apiMiddleware);
-    write(path.join(projectDir, "src", "store", "store.js"), storeContent.trim());
-    write(path.join(projectDir, "src", "store", "counterSlice.js"), T.COUNTER_SLICE_JS);
-    if (answers.rtkQuery) write(path.join(projectDir, "src", "store", "api.js"), T.RTK_API_JS);
-  }
-
-  // Zustand
-  if (answers.zustand) {
-    run("npm", ["i", "zustand"], projectDir);
-    ensure(path.join(projectDir, "src", "stores"));
-    const storeExt = answers.ts ? "ts" : "js";
-    const zustand = answers.ts
-      ? `
-import { create } from "zustand";
-import { devtools, persist, createJSONStorage } from "zustand/middleware";
-type Theme = "light" | "dark";
-interface AppState { theme: Theme; count: number; setTheme: (t: Theme) => void; inc: () => void; dec: () => void; reset: () => void; }
-export const useAppStore = create<AppState>()(devtools(persist((set)=>({
-  theme:"light", count:0, setTheme:(t)=>set({theme:t}), inc:()=>set(s=>({count:s.count+1})), dec:()=>set(s=>({count:s.count-1})), reset:()=>set({count:0})
-}),{ name:"app-store", storage: createJSONStorage(()=>localStorage)})));
-`.trim()
-      : `
-import { create } from "zustand";
-import { devtools, persist, createJSONStorage } from "zustand/middleware";
-export const useAppStore = create()(devtools(persist((set)=>({
-  theme:"light", count:0, setTheme:(t)=>set({theme:t}), inc:()=>set(s=>({count:s.count+1})), dec:()=>set(s=>({count:s.count-1})), reset:()=>set({count:0})
-}),{ name:"app-store", storage: createJSONStorage(()=>localStorage)})));
-`.trim();
-    write(path.join(projectDir, "src", "stores", `useAppStore.${storeExt}`), zustand);
-  }
-
-  // Prettier
-  if (answers.pt) {
-    run("npm", ["i", "-D", "prettier", "prettier-plugin-tailwindcss"], projectDir);
-    write(path.join(projectDir, ".prettierrc"), JSON.stringify({ plugins: ["prettier-plugin-tailwindcss"] }, null, 2));
-    write(path.join(projectDir, ".prettierignore"), "node_modules\ndist\n.next\nbuild\n");
-  }
-
-  // shadcn
-  if (answers.ui === "shadcn") setupShadcn(projectDir, { isVite: true });
-
-  // demos
-  ensure(path.join(projectDir, "src", "components", "demo"));
-  if (answers.redux) write(path.join(projectDir, "src", "components", "demo", "ReduxDemo.jsx"), T.REDUX_DEMO_JS);
-  if (answers.rtkQuery) write(path.join(projectDir, "src", "components", "demo", "RTKQueryDemo.jsx"), T.RTK_QUERY_DEMO_JS);
-  if (answers.reactQuery) write(path.join(projectDir, "src", "components", "demo", "ReactQueryDemo.jsx"), T.REACT_QUERY_DEMO_JS);
-  if (answers.swr) write(path.join(projectDir, "src", "components", "demo", "SWRDemo.jsx"), T.SWR_DEMO_JS);
-  if (answers.router) write(path.join(projectDir, "src", "components", "demo", "RouterDemo.jsx"), T.ROUTER_DEMO_JS);
-  if (answers.context) write(path.join(projectDir, "src", "components", "demo", "ContextDemo.jsx"), T.CONTEXT_DEMO_JS);
-  write(path.join(projectDir, "src", "components", "demo", "UseStateDemo.jsx"), T.USESTATE_DEMO_JS);
-
-  if (answers.framer) { run("npm", ["i", "framer-motion"], projectDir); write(path.join(projectDir, "src", "components", "demo", `FramerDemo.${answers.ts ? "tsx" : "jsx"}`), T.FRAMER_DEMO_REACT); }
-  if (answers.gsap) { run("npm", ["i", "gsap"], projectDir); write(path.join(projectDir, "src", "components", "demo", `GsapDemo.${answers.ts ? "tsx" : "jsx"}`), answers.ts ? T.GSAP_DEMO_REACT_TS : T.GSAP_DEMO_REACT_JS); }
 }
 
 module.exports = { scaffoldReact };

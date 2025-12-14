@@ -11,6 +11,7 @@
 
 - 🚀 **React (Vite)** or **Next.js** starter templates
 - 🎨 **Tailwind CSS v3.4** preconfigured with optimal settings
+- **Tailwind CSS v4** (modern engine, faster builds, CSS-first config) [optional]
 - 🗂 **State Management Options**: Zustand, Redux Toolkit, RTK Query, React Query, SWR, Context API + useReducer
 - 💅 **Prettier + Tailwind plugin** for consistent code formatting
 - 🧩 Optional **shadcn/ui** component library setup
@@ -31,6 +32,28 @@ npx create-bawo-frontend my-app -y
 cd my-app
 npm run dev
 ```
+
+
+### ✅ Tailwind v4 (Optional – Explicit Opt-in)
+
+You can opt into **Tailwind CSS v4** (modern engine, faster builds, CSS-first config) using the flag below:
+ 
+
+### React with Tailwind v4 (modern setup)
+
+```bash
+npx create-bawo-frontend my-app --tailwind v4 -y
+
+
+Optional extra (Next.js):
+
+```md
+### Next.js with Tailwind v4
+
+```bash
+npx create-bawo-frontend my-app --framework next --tailwind v4 -y
+
+
 
 That's it! Your development server will start automatically.
 
