@@ -1,7 +1,7 @@
 {
   "name": "create-bawo-frontend",
-  "version": "2.2.0",
-  "description": "Scaffold React (Vite) or Next.js with Tailwind, Zustand, Prettier, optional shadcn/ui, Framer Motion, and GSAP.",
+  "version": "2.2.1",
+  "description": "Scaffold React (Vite) or Next.js with Tailwind CSS (v3 default, v4 optional), state management, Prettier, optional shadcn/ui, Framer Motion, and GSAP.",
   "bin": {
     "create-bawo-frontend": "bin/index.js"
   },
@@ -12,7 +12,7 @@
     "LICENSE"
   ],
   "license": "MIT",
-  "author": "joseph bawo",
+  "author": "Joseph Bawo",
   "type": "commonjs",
   "engines": {
     "node": ">=18.0.0"
@@ -25,10 +25,12 @@
   },
   "keywords": [
     "scaffold",
+    "create-app",
     "vite",
     "react",
     "nextjs",
     "tailwindcss",
+    "tailwindcss-v4",
     "zustand",
     "redux",
     "redux-toolkit",
