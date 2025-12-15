@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 const { path, write, ensure, read, run } = require("../utils");
-const T = require("../templates");
 const { setupShadcn } = require("../setup/shadcn");
 
 function scaffoldReact(projectDir, answers) {
@@ -18,20 +17,37 @@ function scaffoldReact(projectDir, answers) {
   const deps = ["react", "react-dom"];
   const dev = ["vite", "@vitejs/plugin-react"];
 
+  // Tailwind
   if (isTW4) {
     dev.push("tailwindcss@latest", "@tailwindcss/vite", "postcss");
   } else {
     dev.push("tailwindcss@3.4.14", "postcss", "autoprefixer");
   }
 
-  if (answers.ts) dev.push("typescript", "@types/react", "@types/react-dom");
-  if (answers.redux || answers.rtkQuery) deps.push("@reduxjs/toolkit", "react-redux");
+  // TypeScript
+  if (answers.ts) {
+    dev.push("typescript", "@types/react", "@types/react-dom");
+  }
+
+  // State management
+  if (answers.redux || answers.rtkQuery) {
+    deps.push("@reduxjs/toolkit", "react-redux");
+  }
+
+  // Data fetching
   if (answers.reactQuery) deps.push("@tanstack/react-query");
   if (answers.swr) deps.push("swr");
+
+  // Router
   if (answers.router) deps.push("react-router-dom");
 
-  run("npm", ["i", ...deps], projectDir);
-  run("npm", ["i", "-D", ...dev], projectDir);
+  // ✅ Animation libraries (FIXED)
+  if (answers.framer) deps.push("framer-motion");
+  if (answers.gsap) deps.push("gsap");
+
+  // Install deps
+  run("npm", ["install", ...deps], projectDir);
+  run("npm", ["install", "-D", ...dev], projectDir);
 
   // --------------------
   // Vite config
@@ -63,6 +79,7 @@ export default defineConfig({
   // --------------------
   const pkgPath = path.join(projectDir, "package.json");
   const pkg = JSON.parse(read(pkgPath));
+
   pkg.scripts = {
     ...(pkg.scripts || {}),
     dev: "vite",
@@ -71,6 +88,7 @@ export default defineConfig({
     lint: 'echo "(add eslint if you want)" && exit 0',
     format: 'echo "(add prettier if you want)" && exit 0',
   };
+
   write(pkgPath, JSON.stringify(pkg, null, 2));
 
   // --------------------
@@ -140,19 +158,22 @@ import "./styles/index.css";
 `;
 
   if (answers.redux || answers.rtkQuery) {
-    main += `import { Provider } from "react-redux";
+    main += `
+import { Provider } from "react-redux";
 import { store } from "./store/store";
 `;
   }
 
   if (answers.reactQuery) {
-    main += `import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+    main += `
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const queryClient = new QueryClient();
 `;
   }
 
   if (answers.context) {
-    main += `import { ThemeProvider } from "./components/demo/ContextDemo";
+    main += `
+import { ThemeProvider } from "./components/demo/ContextDemo";
 `;
   }
 
