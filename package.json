@@ -1,6 +1,6 @@
 {
   "name": "create-bawo-frontend",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "Scaffold React (Vite) or Next.js with Tailwind CSS (v3 default, v4 optional), state management, Prettier, optional shadcn/ui, Framer Motion, and GSAP.",
   "bin": {
     "create-bawo-frontend": "bin/index.js"
