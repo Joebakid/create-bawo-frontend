@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 const { path, write, ensure, read, run } = require("../utils");
-const T = require("../templates");
 const { setupShadcn } = require("../setup/shadcn");
 
 function scaffoldNext(projectDir, answers) {
   const isTW4 = answers.tailwind === "v4";
+  const ext = answers.ts ? "tsx" : "jsx";
 
   console.log(
     isTW4
@@ -12,44 +12,59 @@ function scaffoldNext(projectDir, answers) {
       : "✅ Using Tailwind CSS v3 (default, stable)"
   );
 
-  // --------------------
-  // Dependencies
-  // --------------------
+  /* -------------------------------------------------
+   * Dependencies
+   * ------------------------------------------------- */
   const deps = ["react", "react-dom", "next"];
   const dev = [];
 
+  // Tailwind
   if (isTW4) {
-    dev.push("tailwindcss@latest", "postcss");
+    dev.push(
+      "tailwindcss@latest",
+      "postcss",
+      "@tailwindcss/postcss" // ✅ REQUIRED FOR NEXT + TW4
+    );
   } else {
     dev.push("tailwindcss@3.4.14", "postcss", "autoprefixer");
   }
 
-  if (answers.ts) dev.push("typescript", "@types/react", "@types/react-dom");
+  // TypeScript
+  if (answers.ts) {
+    dev.push("typescript", "@types/react", "@types/react-dom", "@types/node");
+  }
+
+  // State / data
   if (answers.redux || answers.rtkQuery) deps.push("@reduxjs/toolkit", "react-redux");
   if (answers.reactQuery) deps.push("@tanstack/react-query");
   if (answers.swr) deps.push("swr");
+  if (answers.zustand) deps.push("zustand");
 
-  run("npm", ["i", ...deps], projectDir);
-  run("npm", ["i", "-D", ...dev], projectDir);
+  // Animations
+  if (answers.framer) deps.push("framer-motion");
+  if (answers.gsap) deps.push("gsap");
 
-  // --------------------
-  // package.json scripts
-  // --------------------
+  run("npm", ["install", ...deps], projectDir);
+  run("npm", ["install", "-D", ...dev], projectDir);
+
+  /* -------------------------------------------------
+   * package.json scripts
+   * ------------------------------------------------- */
   const pkgPath = path.join(projectDir, "package.json");
   const pkg = JSON.parse(read(pkgPath));
+
   pkg.scripts = {
     ...(pkg.scripts || {}),
     dev: "next dev",
     build: "next build",
     start: "next start",
-    lint: 'echo "(add eslint if you want)" && exit 0',
-    format: 'echo "(add prettier if you want)" && exit 0',
   };
+
   write(pkgPath, JSON.stringify(pkg, null, 2));
 
-  // --------------------
-  // Next config + TS
-  // --------------------
+  /* -------------------------------------------------
+   * Next config
+   * ------------------------------------------------- */
   if (answers.ts) {
     write(
       path.join(projectDir, "next.config.ts"),
@@ -66,17 +81,13 @@ export default nextConfig;
           compilerOptions: {
             target: "ES2022",
             lib: ["ES2022", "DOM", "DOM.Iterable"],
-            allowJs: false,
-            skipLibCheck: true,
             strict: true,
             noEmit: true,
-            esModuleInterop: true,
             module: "ESNext",
             moduleResolution: "Bundler",
-            resolveJsonModule: true,
-            isolatedModules: true,
-            jsx: "preserve",
+            jsx: "react-jsx",
             incremental: true,
+            skipLibCheck: true,
           },
           include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
           exclude: ["node_modules"],
@@ -89,35 +100,42 @@ export default nextConfig;
     write(
       path.join(projectDir, "next-env.d.ts"),
       `/// <reference types="next" />
-/// <reference types="next/image-types/global" />
-`
+/// <reference types="next/image-types/global" />`
     );
   } else {
     write(
       path.join(projectDir, "next.config.mjs"),
       `const nextConfig = {};
-export default nextConfig;
-`
+export default nextConfig;`
     );
   }
 
-  // --------------------
-  // App Router structure
-  // --------------------
+  /* -------------------------------------------------
+   * App Router
+   * ------------------------------------------------- */
   ensure(path.join(projectDir, "app"));
 
-  // --------------------
-  // Tailwind setup
-  // --------------------
-  if (!isTW4) {
+  /* -------------------------------------------------
+   * Tailwind config
+   * ------------------------------------------------- */
+  if (isTW4) {
+    // ✅ REQUIRED FOR NEXT + TAILWIND v4
+    write(
+      path.join(projectDir, "postcss.config.cjs"),
+      `module.exports = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};`
+    );
+  } else {
     write(
       path.join(projectDir, "tailwind.config.cjs"),
       `module.exports = {
   content: ["./app/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
   theme: { extend: {} },
   plugins: [],
-};
-`
+};`
     );
 
     write(
@@ -127,13 +145,12 @@ export default nextConfig;
     tailwindcss: {},
     autoprefixer: {},
   },
-};
-`
+};`
     );
   }
 
   write(
-    path.join(projectDir, "app", "globals.css"),
+    path.join(projectDir, "app/globals.css"),
     isTW4
       ? `@import "tailwindcss";`
       : `@tailwind base;
@@ -141,41 +158,16 @@ export default nextConfig;
 @tailwind utilities;`
   );
 
-  // --------------------
-  // layout.tsx / jsx
-  // --------------------
-  const layoutExt = answers.ts ? "tsx" : "jsx";
-
+  /* -------------------------------------------------
+   * layout
+   * ------------------------------------------------- */
   write(
-    path.join(projectDir, "app", `layout.${layoutExt}`),
-    answers.ts
-      ? `
+    path.join(projectDir, "app", `layout.${ext}`),
+    `
 import "./globals.css";
 
 export const metadata = {
-  title: "Next + Tailwind",
-  description: "Scaffolded by create-bawo-frontend",
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en">
-      <body className="min-h-screen bg-white text-gray-900">
-        {children}
-      </body>
-    </html>
-  );
-}
-`.trimStart()
-      : `
-import "./globals.css";
-
-export const metadata = {
-  title: "Next + Tailwind",
+  title: "Next.js App",
   description: "Scaffolded by create-bawo-frontend",
 };
 
@@ -191,134 +183,55 @@ export default function RootLayout({ children }) {
 `.trimStart()
   );
 
-  // --------------------
-  // page.tsx / jsx
-  // --------------------
-  const pageExt = answers.ts ? "tsx" : "jsx";
+  /* -------------------------------------------------
+   * Stack summary (SELF-DOCUMENTING TEMPLATE)
+   * ------------------------------------------------- */
+  const animations =
+    answers.framer && answers.gsap
+      ? "Framer Motion + GSAP"
+      : answers.framer
+      ? "Framer Motion"
+      : answers.gsap
+      ? "GSAP"
+      : "None";
+
+  const state =
+    answers.redux
+      ? "Redux Toolkit"
+      : answers.zustand
+      ? "Zustand"
+      : "None";
 
   write(
-    path.join(projectDir, "app", `page.${pageExt}`),
+    path.join(projectDir, "app", `page.${ext}`),
     `
 export default function Page() {
   return (
-    <main className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold">
-        Hello 👋 Next.js + Tailwind (${answers.ts ? "TS" : "JS"})
-      </h1>
-      <p className="mt-3 text-gray-600">
-        Tailwind version: ${isTW4 ? "v4" : "v3"}
-      </p>
+    <main className="p-8 max-w-3xl mx-auto space-y-4">
+      <h1 className="text-3xl font-bold">create-bawo-frontend</h1>
+
+      <ul className="text-gray-600 list-disc list-inside">
+        <li>Framework: Next.js (App Router)</li>
+        <li>Language: ${answers.ts ? "TypeScript" : "JavaScript"}</li>
+        <li>Styling: Tailwind CSS ${isTW4 ? "v4" : "v3"}</li>
+        <li>State Management: ${state}</li>
+        <li>Animations: ${animations}</li>
+      </ul>
     </main>
   );
 }
 `.trimStart()
   );
 
-  // --------------------
-  // Zustand (optional)
-  // --------------------
-  if (answers.zustand) {
-    run("npm", ["i", "zustand"], projectDir);
-    ensure(path.join(projectDir, "store"));
-
-    const storeExt = answers.ts ? "ts" : "js";
-
-    write(
-      path.join(projectDir, "store", `useAppStore.${storeExt}`),
-      answers.ts
-        ? `
-import { create } from "zustand";
-import { devtools, persist, createJSONStorage } from "zustand/middleware";
-
-type Theme = "light" | "dark";
-
-interface AppState {
-  theme: Theme;
-  count: number;
-  setTheme: (t: Theme) => void;
-  inc: () => void;
-  dec: () => void;
-  reset: () => void;
-}
-
-export const useAppStore = create<AppState>()(
-  devtools(
-    persist(
-      (set) => ({
-        theme: "light",
-        count: 0,
-        setTheme: (t) => set({ theme: t }),
-        inc: () => set((s) => ({ count: s.count + 1 })),
-        dec: () => set((s) => ({ count: s.count - 1 })),
-        reset: () => set({ count: 0 }),
-      }),
-      { name: "app-store", storage: createJSONStorage(() => localStorage) }
-    )
-  )
-);
-`.trim()
-        : `
-import { create } from "zustand";
-import { devtools, persist, createJSONStorage } from "zustand/middleware";
-
-export const useAppStore = create()(
-  devtools(
-    persist(
-      (set) => ({
-        theme: "light",
-        count: 0,
-        setTheme: (t) => set({ theme: t }),
-        inc: () => set((s) => ({ count: s.count + 1 })),
-        dec: () => set((s) => ({ count: s.count - 1 })),
-        reset: () => set({ count: 0 }),
-      }),
-      { name: "app-store", storage: createJSONStorage(() => localStorage) }
-    )
-  )
-);
-`.trim()
-    );
-  }
-
-  // --------------------
-  // Prettier
-  // --------------------
-  if (answers.pt) {
-    run("npm", ["i", "-D", "prettier", "prettier-plugin-tailwindcss"], projectDir);
-    write(path.join(projectDir, ".prettierrc"), JSON.stringify({ plugins: ["prettier-plugin-tailwindcss"] }, null, 2));
-    write(path.join(projectDir, ".prettierignore"), "node_modules\n.next\nbuild\ndist\n");
-  }
-
-  // --------------------
-  // shadcn/ui guard
-  // --------------------
+  /* -------------------------------------------------
+   * shadcn/ui
+   * ------------------------------------------------- */
   if (answers.ui === "shadcn") {
     if (isTW4) {
       console.warn("⚠️ shadcn/ui is not compatible with Tailwind v4 yet. Skipping.");
     } else {
       setupShadcn(projectDir, { isVite: false });
     }
-  }
-
-  // --------------------
-  // Optional demos
-  // --------------------
-  ensure(path.join(projectDir, "components", "demo"));
-
-  if (answers.framer) {
-    run("npm", ["i", "framer-motion"], projectDir);
-    write(
-      path.join(projectDir, "components", "demo", `FramerDemo.${answers.ts ? "tsx" : "jsx"}`),
-      T.FRAMER_DEMO_NEXT
-    );
-  }
-
-  if (answers.gsap) {
-    run("npm", ["i", "gsap"], projectDir);
-    write(
-      path.join(projectDir, "components", "demo", `GsapDemo.${answers.ts ? "tsx" : "jsx"}`),
-      answers.ts ? T.GSAP_DEMO_NEXT : T.GSAP_DEMO_NEXT_JS
-    );
   }
 }
 
