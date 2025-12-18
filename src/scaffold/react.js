@@ -1,7 +1,17 @@
 /* eslint-disable no-console */
 const { path, write, ensure, read, run } = require("../utils");
-const T = require("../templates");
 const { setupShadcn } = require("../setup/shadcn");
+
+function normalizeAnimations(answers) {
+  const animations = Array.isArray(answers.animations)
+    ? answers.animations
+    : [];
+
+  return {
+    useFramer: animations.includes("framer"),
+    useGsap: animations.includes("gsap"),
+  };
+}
 
 function scaffoldReact(projectDir, answers) {
   const isTW4 = answers.tailwind === "v4";
@@ -13,25 +23,52 @@ function scaffoldReact(projectDir, answers) {
   );
 
   // --------------------
+  // Normalize animations (CRITICAL FIX)
+  // --------------------
+  const { useFramer, useGsap } = normalizeAnimations(answers);
+
+  // --------------------
   // Dependencies
   // --------------------
   const deps = ["react", "react-dom"];
   const dev = ["vite", "@vitejs/plugin-react"];
 
+  // Tailwind
   if (isTW4) {
     dev.push("tailwindcss@latest", "@tailwindcss/vite", "postcss");
   } else {
     dev.push("tailwindcss@3.4.14", "postcss", "autoprefixer");
   }
 
-  if (answers.ts) dev.push("typescript", "@types/react", "@types/react-dom");
-  if (answers.redux || answers.rtkQuery) deps.push("@reduxjs/toolkit", "react-redux");
+  // TypeScript
+  if (answers.ts) {
+    dev.push("typescript", "@types/react", "@types/react-dom");
+  }
+
+  // State management
+  if (answers.redux || answers.rtkQuery) {
+    deps.push("@reduxjs/toolkit", "react-redux");
+  }
+
+  // Data fetching
   if (answers.reactQuery) deps.push("@tanstack/react-query");
   if (answers.swr) deps.push("swr");
+
+  // Router
   if (answers.router) deps.push("react-router-dom");
 
-  run("npm", ["i", ...deps], projectDir);
-  run("npm", ["i", "-D", ...dev], projectDir);
+  // ✅ Animations (NOW GUARANTEED)
+  if (useFramer) deps.push("framer-motion");
+  if (useGsap) deps.push("gsap");
+
+  // --------------------
+  // Install deps (with visibility)
+  // --------------------
+  console.log("📦 Installing dependencies:", deps);
+  run("npm", ["install", ...deps], projectDir);
+
+  console.log("🛠 Installing dev dependencies:", dev);
+  run("npm", ["install", "-D", ...dev], projectDir);
 
   // --------------------
   // Vite config
@@ -63,6 +100,7 @@ export default defineConfig({
   // --------------------
   const pkgPath = path.join(projectDir, "package.json");
   const pkg = JSON.parse(read(pkgPath));
+
   pkg.scripts = {
     ...(pkg.scripts || {}),
     dev: "vite",
@@ -71,6 +109,7 @@ export default defineConfig({
     lint: 'echo "(add eslint if you want)" && exit 0',
     format: 'echo "(add prettier if you want)" && exit 0',
   };
+
   write(pkgPath, JSON.stringify(pkg, null, 2));
 
   // --------------------
@@ -140,19 +179,16 @@ import "./styles/index.css";
 `;
 
   if (answers.redux || answers.rtkQuery) {
-    main += `import { Provider } from "react-redux";
+    main += `
+import { Provider } from "react-redux";
 import { store } from "./store/store";
 `;
   }
 
   if (answers.reactQuery) {
-    main += `import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+    main += `
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const queryClient = new QueryClient();
-`;
-  }
-
-  if (answers.context) {
-    main += `import { ThemeProvider } from "./components/demo/ContextDemo";
 `;
   }
 
@@ -164,11 +200,9 @@ root.render(
 
   if (answers.redux || answers.rtkQuery) main += `    <Provider store={store}>\n`;
   if (answers.reactQuery) main += `      <QueryClientProvider client={queryClient}>\n`;
-  if (answers.context) main += `        <ThemeProvider>\n`;
 
   main += `          <App />\n`;
 
-  if (answers.context) main += `        </ThemeProvider>\n`;
   if (answers.reactQuery) main += `      </QueryClientProvider>\n`;
   if (answers.redux || answers.rtkQuery) main += `    </Provider>\n`;
 
@@ -176,7 +210,10 @@ root.render(
 );
 `;
 
-  write(path.join(projectDir, "src", `main.${answers.ts ? "tsx" : "jsx"}`), main.trimStart());
+  write(
+    path.join(projectDir, "src", `main.${answers.ts ? "tsx" : "jsx"}`),
+    main.trimStart()
+  );
 
   // --------------------
   // App.jsx / tsx

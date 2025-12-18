@@ -21,7 +21,8 @@
     "access": "public"
   },
   "dependencies": {
-    "prompts": "^2.4.2"
+    "prompts": "^2.4.2",
+    "yargs": "^18.0.0"
   },
   "keywords": [
     "scaffold",
@@ -51,5 +52,5 @@
   "bugs": {
     "url": "https://github.com/joebakid/create-bawo-frontend/issues"
   },
-  "homepage": "https://github.com/joebakid/create-bawo-frontend#readme"
+  "homepage": "https://create-bawo-frontend.vercel.app/"
 }
