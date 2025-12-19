@@ -11,9 +11,9 @@ function scaffoldReact(projectDir, answers) {
       : "✅ Using Tailwind CSS v3 (default, stable)"
   );
 
-  // --------------------
-  // Dependencies
-  // --------------------
+  /* -------------------------------------------------
+   * Dependencies
+   * ------------------------------------------------- */
   const deps = ["react", "react-dom"];
   const dev = ["vite", "@vitejs/plugin-react"];
 
@@ -29,29 +29,23 @@ function scaffoldReact(projectDir, answers) {
     dev.push("typescript", "@types/react", "@types/react-dom");
   }
 
-  // State management
-  if (answers.redux || answers.rtkQuery) {
-    deps.push("@reduxjs/toolkit", "react-redux");
-  }
-
-  // Data fetching
+  // State / data
+  if (answers.redux || answers.rtkQuery) deps.push("@reduxjs/toolkit", "react-redux");
   if (answers.reactQuery) deps.push("@tanstack/react-query");
   if (answers.swr) deps.push("swr");
-
-  // Router
   if (answers.router) deps.push("react-router-dom");
 
-  // ✅ Animation libraries (FIXED)
+  // ✅ Animations
   if (answers.framer) deps.push("framer-motion");
   if (answers.gsap) deps.push("gsap");
 
-  // Install deps
+  // Install
   run("npm", ["install", ...deps], projectDir);
   run("npm", ["install", "-D", ...dev], projectDir);
 
-  // --------------------
-  // Vite config
-  // --------------------
+  /* -------------------------------------------------
+   * Vite config
+   * ------------------------------------------------- */
   write(
     path.join(projectDir, "vite.config.ts"),
     isTW4
@@ -74,9 +68,9 @@ export default defineConfig({
 `.trimStart()
   );
 
-  // --------------------
-  // package.json scripts
-  // --------------------
+  /* -------------------------------------------------
+   * package.json scripts
+   * ------------------------------------------------- */
   const pkgPath = path.join(projectDir, "package.json");
   const pkg = JSON.parse(read(pkgPath));
 
@@ -85,15 +79,13 @@ export default defineConfig({
     dev: "vite",
     build: "vite build",
     preview: "vite preview",
-    lint: 'echo "(add eslint if you want)" && exit 0',
-    format: 'echo "(add prettier if you want)" && exit 0',
   };
 
   write(pkgPath, JSON.stringify(pkg, null, 2));
 
-  // --------------------
-  // index.html
-  // --------------------
+  /* -------------------------------------------------
+   * index.html
+   * ------------------------------------------------- */
   write(
     path.join(projectDir, "index.html"),
     `
@@ -102,9 +94,9 @@ export default defineConfig({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + Tailwind</title>
+    <title>React + Vite</title>
   </head>
-  <body class="min-h-screen bg-white text-gray-900">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.${answers.ts ? "tsx" : "jsx"}"></script>
   </body>
@@ -112,10 +104,10 @@ export default defineConfig({
 `.trimStart()
   );
 
-  // --------------------
-  // Tailwind setup
-  // --------------------
-  ensure(path.join(projectDir, "src", "styles"));
+  /* -------------------------------------------------
+   * Tailwind
+   * ------------------------------------------------- */
+  ensure(path.join(projectDir, "src/styles"));
 
   if (!isTW4) {
     write(
@@ -140,16 +132,72 @@ export default defineConfig({
 
   write(
     path.join(projectDir, "src/styles/index.css"),
-    isTW4
-      ? `@import "tailwindcss";`
-      : `@tailwind base;
+    isTW4 ? `@import "tailwindcss";` : `@tailwind base;
 @tailwind components;
 @tailwind utilities;`
   );
 
-  // --------------------
-  // main.jsx / tsx
-  // --------------------
+  /* -------------------------------------------------
+   * Animation demos
+   * ------------------------------------------------- */
+  ensure(path.join(projectDir, "src/components/demo"));
+
+  if (answers.framer) {
+    write(
+      path.join(projectDir, "src/components/demo/FramerDemo.jsx"),
+      `
+import { motion } from "framer-motion";
+
+export function FramerDemo() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="p-4 mt-6 bg-black text-white rounded-lg"
+    >
+      Framer Motion is working 🚀
+    </motion.div>
+  );
+}
+`.trimStart()
+    );
+  }
+
+  if (answers.gsap) {
+    write(
+      path.join(projectDir, "src/components/demo/GsapDemo.jsx"),
+      `
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
+
+export function GsapDemo() {
+  const box = useRef(null);
+
+  useEffect(() => {
+    gsap.fromTo(
+      box.current,
+      { opacity: 0, x: -40 },
+      { opacity: 1, x: 0, duration: 0.6 }
+    );
+  }, []);
+
+  return (
+    <div
+      ref={box}
+      className="p-4 mt-6 bg-green-600 text-white rounded-lg"
+    >
+      GSAP is working 🎯
+    </div>
+  );
+}
+`.trimStart()
+    );
+  }
+
+  /* -------------------------------------------------
+   * main.jsx / tsx
+   * ------------------------------------------------- */
   let main = `
 import React from "react";
 import { createRoot } from "react-dom/client";
@@ -157,75 +205,47 @@ import App from "./App";
 import "./styles/index.css";
 `;
 
-  if (answers.redux || answers.rtkQuery) {
-    main += `
-import { Provider } from "react-redux";
-import { store } from "./store/store";
-`;
-  }
-
-  if (answers.reactQuery) {
-    main += `
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-const queryClient = new QueryClient();
-`;
-  }
-
-  if (answers.context) {
-    main += `
-import { ThemeProvider } from "./components/demo/ContextDemo";
-`;
-  }
-
   main += `
 const root = createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-`;
-
-  if (answers.redux || answers.rtkQuery) main += `    <Provider store={store}>\n`;
-  if (answers.reactQuery) main += `      <QueryClientProvider client={queryClient}>\n`;
-  if (answers.context) main += `        <ThemeProvider>\n`;
-
-  main += `          <App />\n`;
-
-  if (answers.context) main += `        </ThemeProvider>\n`;
-  if (answers.reactQuery) main += `      </QueryClientProvider>\n`;
-  if (answers.redux || answers.rtkQuery) main += `    </Provider>\n`;
-
-  main += `  </React.StrictMode>
+    <App />
+  </React.StrictMode>
 );
 `;
 
   write(path.join(projectDir, "src", `main.${answers.ts ? "tsx" : "jsx"}`), main.trimStart());
 
-  // --------------------
-  // App.jsx / tsx
-  // --------------------
-  write(
-    path.join(projectDir, "src", `App.${answers.ts ? "tsx" : "jsx"}`),
-    `
+  /* -------------------------------------------------
+   * App.jsx / tsx
+   * ------------------------------------------------- */
+  let app = `
+${answers.framer ? 'import { FramerDemo } from "./components/demo/FramerDemo";' : ""}
+${answers.gsap ? 'import { GsapDemo } from "./components/demo/GsapDemo";' : ""}
+
 export default function App() {
   return (
-    <main className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold">
-        Hello 👋 React + Vite + Tailwind (${answers.ts ? "TS" : "JS"})
-      </h1>
-      <p className="mt-3 text-gray-600">
-        Tailwind version: ${isTW4 ? "v4" : "v3"}
+    <main className="p-6 max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold">create-bawo-frontend</h1>
+      <p className="mt-2 text-gray-500">
+        Tailwind ${isTW4 ? "v4" : "v3"}
       </p>
+
+      ${answers.framer ? "<FramerDemo />" : ""}
+      ${answers.gsap ? "<GsapDemo />" : ""}
     </main>
   );
 }
-`.trimStart()
-  );
+`;
 
-  // --------------------
-  // shadcn/ui guard
-  // --------------------
+  write(path.join(projectDir, "src", `App.${answers.ts ? "tsx" : "jsx"}`), app.trimStart());
+
+  /* -------------------------------------------------
+   * shadcn/ui
+   * ------------------------------------------------- */
   if (answers.ui === "shadcn") {
     if (isTW4) {
-      console.warn("⚠️ shadcn/ui is not compatible with Tailwind v4 yet. Skipping.");
+      console.warn("⚠️ shadcn/ui not supported on Tailwind v4 yet. Skipping.");
     } else {
       setupShadcn(projectDir, { isVite: true });
     }
