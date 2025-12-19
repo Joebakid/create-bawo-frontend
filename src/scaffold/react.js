@@ -2,8 +2,26 @@
 const { path, write, ensure, read, run } = require("../utils");
 const { setupShadcn } = require("../setup/shadcn");
 
+/* -------------------------------------------------
+ * Helpers
+ * ------------------------------------------------- */
+function normalizeAnimations(answers) {
+  const animations = Array.isArray(answers.animations)
+    ? answers.animations
+    : [];
+
+  return {
+    useFramer: animations.includes("framer") || answers.framer,
+    useGsap: animations.includes("gsap") || answers.gsap,
+  };
+}
+
+/* -------------------------------------------------
+ * React Scaffold
+ * ------------------------------------------------- */
 function scaffoldReact(projectDir, answers) {
   const isTW4 = answers.tailwind === "v4";
+  const { useFramer, useGsap } = normalizeAnimations(answers);
 
   console.log(
     isTW4
@@ -30,17 +48,20 @@ function scaffoldReact(projectDir, answers) {
   }
 
   // State / data
-  if (answers.redux || answers.rtkQuery) deps.push("@reduxjs/toolkit", "react-redux");
+  if (answers.redux || answers.rtkQuery)
+    deps.push("@reduxjs/toolkit", "react-redux");
   if (answers.reactQuery) deps.push("@tanstack/react-query");
   if (answers.swr) deps.push("swr");
   if (answers.router) deps.push("react-router-dom");
 
-  // ✅ Animations
-  if (answers.framer) deps.push("framer-motion");
-  if (answers.gsap) deps.push("gsap");
+  // Animations
+  if (useFramer) deps.push("framer-motion");
+  if (useGsap) deps.push("gsap");
 
-  // Install
+  console.log("📦 Installing dependencies:", deps);
   run("npm", ["install", ...deps], projectDir);
+
+  console.log("🛠 Installing dev dependencies:", dev);
   run("npm", ["install", "-D", ...dev], projectDir);
 
   /* -------------------------------------------------
@@ -132,7 +153,9 @@ export default defineConfig({
 
   write(
     path.join(projectDir, "src/styles/index.css"),
-    isTW4 ? `@import "tailwindcss";` : `@tailwind base;
+    isTW4
+      ? `@import "tailwindcss";`
+      : `@tailwind base;
 @tailwind components;
 @tailwind utilities;`
   );
@@ -142,7 +165,7 @@ export default defineConfig({
    * ------------------------------------------------- */
   ensure(path.join(projectDir, "src/components/demo"));
 
-  if (answers.framer) {
+  if (useFramer) {
     write(
       path.join(projectDir, "src/components/demo/FramerDemo.jsx"),
       `
@@ -164,7 +187,7 @@ export function FramerDemo() {
     );
   }
 
-  if (answers.gsap) {
+  if (useGsap) {
     write(
       path.join(projectDir, "src/components/demo/GsapDemo.jsx"),
       `
@@ -183,10 +206,7 @@ export function GsapDemo() {
   }, []);
 
   return (
-    <div
-      ref={box}
-      className="p-4 mt-6 bg-green-600 text-white rounded-lg"
-    >
+    <div ref={box} className="p-4 mt-6 bg-green-600 text-white rounded-lg">
       GSAP is working 🎯
     </div>
   );
@@ -205,23 +225,53 @@ import App from "./App";
 import "./styles/index.css";
 `;
 
+  if (answers.redux || answers.rtkQuery) {
+    main += `
+import { Provider } from "react-redux";
+import { store } from "./store/store";
+`;
+  }
+
+  if (answers.reactQuery) {
+    main += `
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+const queryClient = new QueryClient();
+`;
+  }
+
   main += `
 const root = createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <App />
-  </React.StrictMode>
+`;
+
+  if (answers.redux || answers.rtkQuery)
+    main += `    <Provider store={store}>\n`;
+  if (answers.reactQuery)
+    main += `      <QueryClientProvider client={queryClient}>\n`;
+
+  main += `        <App />\n`;
+
+  if (answers.reactQuery)
+    main += `      </QueryClientProvider>\n`;
+  if (answers.redux || answers.rtkQuery)
+    main += `    </Provider>\n`;
+
+  main += `  </React.StrictMode>
 );
 `;
 
-  write(path.join(projectDir, "src", `main.${answers.ts ? "tsx" : "jsx"}`), main.trimStart());
+  write(
+    path.join(projectDir, "src", `main.${answers.ts ? "tsx" : "jsx"}`),
+    main.trimStart()
+  );
 
   /* -------------------------------------------------
    * App.jsx / tsx
    * ------------------------------------------------- */
   let app = `
-${answers.framer ? 'import { FramerDemo } from "./components/demo/FramerDemo";' : ""}
-${answers.gsap ? 'import { GsapDemo } from "./components/demo/GsapDemo";' : ""}
+${useFramer ? 'import { FramerDemo } from "./components/demo/FramerDemo";' : ""}
+${useGsap ? 'import { GsapDemo } from "./components/demo/GsapDemo";' : ""}
 
 export default function App() {
   return (
@@ -231,14 +281,17 @@ export default function App() {
         Tailwind ${isTW4 ? "v4" : "v3"}
       </p>
 
-      ${answers.framer ? "<FramerDemo />" : ""}
-      ${answers.gsap ? "<GsapDemo />" : ""}
+      ${useFramer ? "<FramerDemo />" : ""}
+      ${useGsap ? "<GsapDemo />" : ""}
     </main>
   );
 }
 `;
 
-  write(path.join(projectDir, "src", `App.${answers.ts ? "tsx" : "jsx"}`), app.trimStart());
+  write(
+    path.join(projectDir, "src", `App.${answers.ts ? "tsx" : "jsx"}`),
+    app.trimStart()
+  );
 
   /* -------------------------------------------------
    * shadcn/ui

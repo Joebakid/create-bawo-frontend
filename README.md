@@ -10,6 +10,7 @@
 ## ✨ Features
 
 - 🚀 **React (Vite)** or **Next.js** starter templates
+- 🟢 **Vue 3 (Vite)** starter templates
 - 🎨 **Tailwind CSS v3.4** preconfigured with optimal settings
 - **Tailwind CSS v4** (modern engine, faster builds, CSS-first config) [optional]
 - 🗂 **State Management Options**: Zustand, Redux Toolkit, RTK Query, React Query, SWR, Context API + useReducer
@@ -19,7 +20,14 @@
 - 🔥 **Auto-start dev server** for immediate development
 - 📦 **Zero configuration** - works out of the box
 - 🎯 **TypeScript support** with proper configurations
- 
+
+### Vue includes:
+
+- Tailwind CSS (v3 / v4)
+- TypeScript support
+- Vue Router
+- Pinia state management
+- GSAP (optional)
 
 ---
 
@@ -33,29 +41,25 @@ cd my-app
 npm run dev
 ```
 
+That's it! Your development server will start automatically.
 
-### ✅ Tailwind v4 (Optional – Explicit Opt-in)
+---
+
+## ✅ Tailwind v4 (Optional – Explicit Opt-in)
 
 You can opt into **Tailwind CSS v4** (modern engine, faster builds, CSS-first config) using the flag below:
- 
 
 ### React with Tailwind v4 (modern setup)
 
 ```bash
 npx create-bawo-frontend my-app --tailwind v4 -y
+```
 
-
-Optional extra (Next.js):
-
-```md
 ### Next.js with Tailwind v4
 
 ```bash
 npx create-bawo-frontend my-app --framework next --tailwind v4 -y
-
-
-
-That's it! Your development server will start automatically.
+```
 
 ---
 
@@ -87,18 +91,19 @@ Uses sensible defaults and starts the dev server automatically.
 
 ## ⚙️ CLI Options
 
-| Option                                                              | Description                             | Default   |
-| ------------------------------------------------------------------- | --------------------------------------- | --------- |
-| `--framework react\|next`                                           | Choose framework                        | `react`   |
-| `--ts`                                                              | Use TypeScript                          | `false`   |
-| `--state-mgmt zustand\|redux\|rtk-query\|react-query\|swr\|context` | Choose state management                 | `zustand` |
-| `--ui shadcn`                                                       | Add shadcn/ui preset                    | `false`   |
-| `--framer`                                                          | Add Framer Motion + demo                | `false`   |
-| `--gsap`                                                            | Add GSAP + demo                         | `false`   |
-| `--no-start`                                                        | Prevent auto-start dev server           | `false`   |
-| `-y, --yes`                                                         | Skip prompts, use defaults + auto-start | `false`   |
-| `-h, --help`                                                        | Show help message                       | -         |
-| `-v, --version`                                                     | Show CLI version                        | -         |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `--framework react\|next\|vue` | Choose framework | `react` |
+| `--ts` | Use TypeScript | `false` |
+| `--tailwind v3\|v4` | Choose Tailwind CSS version | `v3` |
+| `--state-mgmt zustand\|redux\|rtk-query\|react-query\|swr\|context` | Choose state management | `zustand` |
+| `--ui shadcn` | Add shadcn/ui preset | `false` |
+| `--framer` | Add Framer Motion + demo | `false` |
+| `--gsap` | Add GSAP + demo | `false` |
+| `--no-start` | Prevent auto-start dev server | `false` |
+| `-y, --yes` | Skip prompts, use defaults + auto-start | `false` |
+| `-h, --help` | Show help message | - |
+| `-v, --version` | Show CLI version | - |
 
 ---
 
@@ -122,15 +127,21 @@ npx create-bawo-frontend my-app --framework next --state-mgmt react-query --fram
 npx create-bawo-frontend my-app --framework next --ts --state-mgmt rtk-query --ui shadcn --framer --gsap -y
 ```
 
+### Vue 3 with TypeScript and Tailwind v4
+
+```bash
+npx create-bawo-frontend my-app --framework vue --ts --tailwind v4 -y
+```
+
 ---
 
 ## 🛠 What's Included
 
 ### Core Dependencies
 
-- **React 18** or **Next.js 14** (App Router)
-- **Vite** (for React projects)
-- **Tailwind CSS v3.4** with JIT compilation
+- **React 18** or **Next.js 14** (App Router) or **Vue 3**
+- **Vite** (for React and Vue projects)
+- **Tailwind CSS v3.4** or **v4** with JIT compilation
 - **State Management** (your choice of library)
 - **Prettier** with Tailwind CSS plugin
 
@@ -142,6 +153,7 @@ npx create-bawo-frontend my-app --framework next --ts --state-mgmt rtk-query --u
 - **React Query** - Powerful data synchronization for React
 - **SWR** - Data fetching with caching, revalidation, and more
 - **Context API + useReducer** - Built-in React state management
+- **Pinia** - Official state management for Vue 3
 
 ### Pre-configured Features
 
@@ -156,11 +168,17 @@ npx create-bawo-frontend my-app --framework next --ts --state-mgmt rtk-query --u
 
 The included store template provides:
 
-- State persistence with localStorage (Zustand, Redux)
+- State persistence with localStorage (Zustand, Redux, Pinia)
 - DevTools integration (where supported)
 - TypeScript support
 - Example actions and selectors
 - API integration examples (RTK Query, React Query, SWR)
+
+---
+
+## 📄 License
+
+MIT © [Joseph Bawo](https://github.com/Joebakid)
 
 ---
 
