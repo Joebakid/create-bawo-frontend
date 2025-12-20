@@ -2,7 +2,7 @@
 
 ⚡ A zero-config CLI to scaffold modern **React (Vite)** or **Next.js** projects with **Tailwind CSS**, **state management**, **Prettier**, and optional extras like **shadcn/ui**, **Framer Motion**, and **GSAP** — all in one command.
 
-[![npm version](https://badge.fury.io/js/create-bawo-frontend.svg)](https://badge.fury.io/js/create-bawo-frontend)
+[![npm version](https://img.shields.io/npm/v/create-bawo-frontend.svg)](https://www.npmjs.com/package/create-bawo-frontend)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
