@@ -4,34 +4,33 @@ const { run: exec, write, path } = require("../utils");
 
 async function scaffoldVue(projectDir, answers) {
   try {
-    console.log("🟢 Creating Vue 3 + Vite project...");
+    console.log("🟢 Creating Vue 3 + Vite project (manual control)...");
 
-    /* ---------------- CREATE APP (no auto-install) ---------------- */
-    const template = answers.ts ? "vue-ts" : "vue";
-    console.log("⏳ Copying Vite template files...");
-    await exec(
-      "npx",
-      ["degit", `vitejs/vite/packages/create-vite/template-${template}`, answers.name],
-      path.dirname(projectDir)
-    );
-    console.log("✅ Vite template copied.");
+    // 1. Initialize empty project
+    await exec("npm", ["init", "-y"], projectDir);
 
-    console.log("⏳ Installing base dependencies...");
-    await exec("npm", ["install"], projectDir);
-    console.log("✅ Base dependencies installed.");
+    // 2. Install core Vue deps
+    console.log("⏳ Installing Vue core...");
+    await exec("npm", ["install", "vue"], projectDir);
+    await exec("npm", ["install", "-D", "vite", "@vitejs/plugin-vue"], projectDir);
+    if (answers.ts) {
+      await exec("npm", ["install", "-D", "typescript", "vue-tsc", "@types/node"], projectDir);
+    }
+    console.log("✅ Vue core installed.");
 
-    /* ---------------- CORE LIBS ---------------- */
+    // 3. Install state management + router
     console.log("⏳ Installing Vue Router & Pinia...");
     await exec("npm", ["install", "vue-router", "pinia"], projectDir);
     console.log("✅ Vue Router & Pinia installed.");
 
+    // 4. Install GSAP if requested
     if (answers.gsap) {
       console.log("⏳ Installing GSAP...");
       await exec("npm", ["install", "gsap"], projectDir);
       console.log("✅ GSAP installed.");
     }
 
-    /* ---------------- TAILWIND ---------------- */
+    // 5. Install Tailwind
     const tailwindVersion = answers.tailwind === "v4" ? "^4" : "^3";
     console.log(`⏳ Installing Tailwind CSS ${answers.tailwind}...`);
     await exec(
@@ -41,11 +40,7 @@ async function scaffoldVue(projectDir, answers) {
     );
     console.log(`✅ Tailwind CSS ${answers.tailwind} installed.`);
 
-    // Remove default style if exists
-    const defaultStylePath = path.join(projectDir, "src/style.css");
-    if (fs.existsSync(defaultStylePath)) fs.unlinkSync(defaultStylePath);
-
-    // PostCSS config
+    // 6. Config files
     write(
       path.join(projectDir, "postcss.config.js"),
       `export default {
@@ -56,20 +51,16 @@ async function scaffoldVue(projectDir, answers) {
 };`
     );
 
-    // Tailwind config
     write(
       path.join(projectDir, "tailwind.config.js"),
       `/** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"],
-  theme: {
-    extend: {},
-  },
+  theme: { extend: {} },
   plugins: [],
 };`
     );
 
-    // Tailwind base styles
     write(
       path.join(projectDir, "src/style.css"),
       `@tailwind base;
@@ -77,23 +68,23 @@ export default {
 @tailwind utilities;`
     );
 
-    /* ---------------- ROUTER ---------------- */
+    // 7. Router setup
     const routerDir = path.join(projectDir, "src/router");
     fs.mkdirSync(routerDir, { recursive: true });
     write(
       path.join(routerDir, answers.ts ? "index.ts" : "index.js"),
       `
 import { createRouter, createWebHistory } from "vue-router";
-import Home from "../views/Home.vue";
+import HelloWorld from "../views/HelloWorld.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
-  routes: [{ path: "/", component: Home }],
+  routes: [{ path: "/", component: HelloWorld }],
 });
 `.trim()
     );
 
-    /* ---------------- PINIA STORE ---------------- */
+    // 8. Pinia store
     const storeDir = path.join(projectDir, "src/stores");
     fs.mkdirSync(storeDir, { recursive: true });
     write(
@@ -103,54 +94,35 @@ import { defineStore } from "pinia";
 
 export const useCounterStore = defineStore("counter", {
   state: () => ({ count: 0 }),
-  actions: {
-    increment() {
-      this.count++;
-    },
-  },
+  actions: { increment() { this.count++; } },
 });
 `.trim()
     );
 
-    /* ---------------- GSAP COMPOSABLE ---------------- */
+    // 9. GSAP composable
     if (answers.gsap) {
       const composablesDir = path.join(projectDir, "src/composables");
       fs.mkdirSync(composablesDir, { recursive: true });
-
       write(
         path.join(composablesDir, answers.ts ? "useGsap.ts" : "useGsap.js"),
-        answers.ts
-          ? `
+        `
 import gsap from "gsap";
 
 export function useGsap() {
-  const fadeIn = (el: HTMLElement) => {
+  const fadeIn = (el${answers.ts ? ": HTMLElement" : ""}) => {
     gsap.from(el, { opacity: 0, y: 30, duration: 0.6 });
   };
-
-  return { fadeIn };
-}
-`.trim()
-          : `
-import gsap from "gsap";
-
-export function useGsap() {
-  const fadeIn = (el) => {
-    gsap.from(el, { opacity: 0, y: 30, duration: 0.6 });
-  };
-
   return { fadeIn };
 }
 `.trim()
       );
     }
 
-    /* ---------------- VIEW ---------------- */
+    // 10. HelloWorld.vue showing everything
     const viewsDir = path.join(projectDir, "src/views");
     fs.mkdirSync(viewsDir, { recursive: true });
-
     write(
-      path.join(viewsDir, "Home.vue"),
+      path.join(viewsDir, "HelloWorld.vue"),
       `
 <script setup${answers.ts ? ' lang="ts"' : ""}>
 import { useCounterStore } from "../stores/counter";
@@ -161,20 +133,16 @@ const store = useCounterStore();
 ${answers.gsap ? "const { fadeIn } = useGsap();" : ""}
 
 onMounted(() => {
-  ${answers.gsap ? "fadeIn(document.body);" : ""}
+  ${answers.gsap ? "fadeIn(document.querySelector('h1'));" : ""}
 });
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-    <h1 class="text-4xl font-bold mb-4">
-      Vue + Tailwind + Pinia 🚀
-    </h1>
-
+  <div class="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-8">
+    <h1 class="text-4xl font-bold mb-6">Vue + Pinia + Tailwind ${answers.gsap ? "+ GSAP" : ""} 🚀</h1>
     <p class="mb-4">Count: {{ store.count }}</p>
-
     <button
-      class="px-4 py-2 bg-white text-black rounded"
+      class="px-4 py-2 bg-white text-black rounded hover:bg-gray-200 transition"
       @click="store.increment"
     >
       Increment
@@ -184,12 +152,10 @@ onMounted(() => {
 `.trim()
     );
 
-    /* ---------------- APP + MAIN ---------------- */
+    // 11. App + main
     write(
       path.join(projectDir, "src/App.vue"),
-      `<template>
-  <RouterView />
-</template>`
+      `<template><RouterView /></template>`
     );
 
     write(
@@ -201,10 +167,7 @@ import { router } from "./router";
 import App from "./App.vue";
 import "./style.css";
 
-createApp(App)
-  .use(createPinia())
-  .use(router)
-  .mount("#app");
+createApp(App).use(createPinia()).use(router).mount("#app");
 `.trim()
     );
 
