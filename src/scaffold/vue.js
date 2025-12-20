@@ -1,291 +1,182 @@
-// scaffoldVue.js
+/* eslint-disable no-console */
+const fs = require("fs");
+const { run: exec, write, path } = require("../utils");
 
-/**
- * scaffoldVue
- * Programmatically scaffolds a Vue 3 + Vite project with optional TypeScript, Tailwind CSS (v3 or v4), Pinia, Vue Router, and GSAP.
- * Uses npm (not degit), ensures reliable folder creation, dependency installation, and file structure generation.
- * The generated HelloWorld.vue demonstrates all installed features.
- *
- * @param {Object} options
- * @param {string} options.projectName - Name of the project directory to create.
- * @param {boolean} [options.useTypeScript=false] - Whether to use TypeScript.
- * @param {boolean} [options.useTailwind=false] - Whether to include Tailwind CSS.
- * @param {'v3'|'v4'} [options.tailwindVersion='v4'] - Tailwind CSS version.
- * @param {boolean} [options.usePinia=false] - Whether to include Pinia.
- * @param {boolean} [options.useRouter=false] - Whether to include Vue Router.
- * @param {boolean} [options.useGSAP=false] - Whether to include GSAP.
- */
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-
-function scaffoldVue({
-  projectName,
-  useTypeScript = false,
-  useTailwind = false,
-  tailwindVersion = 'v4',
-  usePinia = false,
-  useRouter = false,
-  useGSAP = false,
-}) {
-  // --- Section 1: Directory Creation and Cleanup ---
-  const projectPath = path.resolve(process.cwd(), projectName);
-  if (fs.existsSync(projectPath)) {
-    throw new Error(`Directory "${projectName}" already exists. Please choose a different name or remove the existing directory.`);
-  }
+async function scaffoldVue(projectDir, answers) {
   try {
-    fs.mkdirSync(projectPath, { recursive: true });
-    console.log(`Created project directory: ${projectPath}`);
+    if (!projectDir || typeof projectDir !== "string") {
+      throw new Error("❌ Invalid project directory. Make sure 'answers.name' is defined.");
+    }
 
-    // --- Section 2: Scaffold Base Project with npm create vue@latest ---
-    const template = useTypeScript ? 'vue-ts' : 'vue';
-    execSync(
-      `npm create vite@latest "${projectName}" -- --template ${template} --no-git --no-install --no-interactive`,
-      { stdio: 'inherit' }
+    if (!fs.existsSync(projectDir)) {
+      fs.mkdirSync(projectDir, { recursive: true });
+    }
+
+    console.log("🟢 Creating Vue 3 + Vite project...");
+
+    const template = answers.ts ? "vue-ts" : "vue";
+    await exec("npx", ["create-vite", answers.name, "--template", template], path.dirname(projectDir));
+
+    if (!fs.existsSync(projectDir)) {
+      throw new Error("❌ Project folder was not created. Vite scaffold may have failed.");
+    }
+
+    console.log("⏳ Installing base dependencies...");
+    await exec("npm", ["install"], projectDir);
+    console.log("✅ Base dependencies installed.");
+
+    console.log("⏳ Installing Vue Router & Pinia...");
+    await exec("npm", ["install", "vue-router", "pinia"], projectDir);
+    console.log("✅ Vue Router & Pinia installed.");
+
+    if (answers.gsap) {
+      console.log("⏳ Installing GSAP...");
+      await exec("npm", ["install", "gsap"], projectDir);
+      console.log("✅ GSAP installed.");
+    }
+
+    const tailwindVersion = answers.tailwind === "v4" ? "^4" : "^3";
+    console.log(`⏳ Installing Tailwind CSS ${answers.tailwind}...`);
+    await exec(
+      "npm",
+      ["install", "-D", `tailwindcss@${tailwindVersion}`, "postcss", "autoprefixer"],
+      projectDir
+    );
+    console.log(`✅ Tailwind CSS ${answers.tailwind} installed.`);
+
+    // Tailwind config
+    await exec("npx", ["tailwindcss", "init", "-p"], projectDir);
+
+    write(
+      path.join(projectDir, "tailwind.config.js"),
+      `/** @type {import('tailwindcss').Config} */
+export default {
+  content: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"],
+  theme: { extend: {} },
+  plugins: [],
+};`
     );
 
-    // --- Section 3: Install Core Dependencies ---
-    process.chdir(projectPath);
-    console.log('Installing core dependencies...');
-    execSync('npm install', { stdio: 'inherit' });
+    write(
+      path.join(projectDir, "src/style.css"),
+      `@tailwind base;
+@tailwind components;
+@tailwind utilities;`
+    );
 
-    // --- Section 4: Install Optional Features ---
-    // Prepare dependency lists
-    const runtimeDeps = [];
-    const devDeps = [];
-    if (useRouter) runtimeDeps.push('vue-router@^4.2.5');
-    if (usePinia) runtimeDeps.push('pinia@^2.1.6');
-    if (useGSAP) runtimeDeps.push('gsap@^3.12.5');
-    if (useTailwind) {
-      if (tailwindVersion === 'v4') {
-        devDeps.push('tailwindcss@^4.0.0', '@tailwindcss/vite@^1.0.0');
-      } else {
-        devDeps.push('tailwindcss@^3.3.5', 'postcss@^8.4.30', 'autoprefixer@^10.4.14');
-      }
-    }
+    // Router
+    const routerDir = path.join(projectDir, "src/router");
+    fs.mkdirSync(routerDir, { recursive: true });
+    write(
+      path.join(routerDir, answers.ts ? "index.ts" : "index.js"),
+      `
+import { createRouter, createWebHistory } from "vue-router";
+import HelloWorld from "../views/HelloWorld.vue";
 
-    if (runtimeDeps.length > 0) {
-      console.log(`Installing runtime dependencies: ${runtimeDeps.join(', ')}`);
-      execSync(`npm install ${runtimeDeps.join(' ')}`, { stdio: 'inherit' });
-    }
-    if (devDeps.length > 0) {
-      console.log(`Installing dev dependencies: ${devDeps.join(', ')}`);
-      execSync(`npm install -D ${devDeps.join(' ')}`, { stdio: 'inherit' });
-    }
-
-    // --- Section 5: Tailwind CSS Setup ---
-    if (useTailwind) {
-      if (tailwindVersion === 'v4') {
-        // Create src/assets/main.css with Tailwind import
-        const assetsDir = path.join('src', 'assets');
-        if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
-        fs.writeFileSync(
-          path.join(assetsDir, 'main.css'),
-          '@import "tailwindcss";\n'
-        );
-        // Update vite.config.js to include Tailwind plugin
-        const viteConfigPath = fs.existsSync('vite.config.ts') ? 'vite.config.ts' : 'vite.config.js';
-        let viteConfig = fs.readFileSync(viteConfigPath, 'utf-8');
-        if (!viteConfig.includes('@tailwindcss/vite')) {
-          viteConfig =
-            `import tailwindcss from '@tailwindcss/vite';\n` +
-            viteConfig.replace(
-              /(plugins:\s*\[)([^\]]*)\]/,
-              (match, p1, p2) => `${p1}${p2 ? p2 + ',' : ''} tailwindcss()]`
-            );
-          fs.writeFileSync(viteConfigPath, viteConfig);
-        }
-      } else {
-        // Tailwind v3: init config files and update content globs
-        execSync('npx tailwindcss init -p', { stdio: 'inherit' });
-        // Update tailwind.config.js content array
-        const tailwindConfigPath = fs.existsSync('tailwind.config.cjs')
-          ? 'tailwind.config.cjs'
-          : 'tailwind.config.js';
-        let tailwindConfig = fs.readFileSync(tailwindConfigPath, 'utf-8');
-        tailwindConfig = tailwindConfig.replace(
-          /content:\s*\[.*?\]/s,
-          `content: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"]`
-        );
-        fs.writeFileSync(tailwindConfigPath, tailwindConfig);
-        // Create src/assets/main.css with Tailwind directives
-        const assetsDir = path.join('src', 'assets');
-        if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
-        fs.writeFileSync(
-          path.join(assetsDir, 'main.css'),
-          '@tailwind base;\n@tailwind components;\n@tailwind utilities;\n'
-        );
-      }
-    }
-
-    // --- Section 6: Generate Pinia Store ---
-    if (usePinia) {
-      const storesDir = path.join('src', 'stores');
-      if (!fs.existsSync(storesDir)) fs.mkdirSync(storesDir, { recursive: true });
-      const counterStorePath = path.join(storesDir, `counter.${useTypeScript ? 'ts' : 'js'}`);
-      fs.writeFileSync(
-        counterStorePath,
-        useTypeScript
-          ? `import { defineStore } from 'pinia'
-
-export const useCounterStore = defineStore('counter', {
-  state: () => ({ count: 0 }),
-  actions: {
-    increment() { this.count++ }
-  }
-})
-`
-          : `import { defineStore } from 'pinia'
-
-export const useCounterStore = defineStore('counter', {
-  state: () => ({ count: 0 }),
-  actions: {
-    increment() { this.count++ }
-  }
-})
-`
-      );
-    }
-
-    // --- Section 7: Generate Router ---
-    if (useRouter) {
-      const routerPath = path.join('src', `router.${useTypeScript ? 'ts' : 'js'}`);
-      fs.writeFileSync(
-        routerPath,
-        useTypeScript
-          ? `import { createRouter, createWebHistory } from 'vue-router'
-import Home from './views/Home.vue'
-import About from './views/About.vue'
-
-const routes = [
-  { path: '/', component: Home },
-  { path: '/about', component: About }
-]
-
-const router = createRouter({
+export const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes: [{ path: "/", component: HelloWorld }],
+});
+`.trim()
+    );
 
-export default router
-`
-          : `import { createRouter, createWebHistory } from 'vue-router'
-import Home from './views/Home.vue'
-import About from './views/About.vue'
+    // Pinia store
+    const storeDir = path.join(projectDir, "src/stores");
+    fs.mkdirSync(storeDir, { recursive: true });
+    write(
+      path.join(storeDir, answers.ts ? "counter.ts" : "counter.js"),
+      `
+import { defineStore } from "pinia";
 
-const routes = [
-  { path: '/', component: Home },
-  { path: '/about', component: About }
-]
+export const useCounterStore = defineStore("counter", {
+  state: () => ({ count: 0 }),
+  actions: { increment() { this.count++; } },
+});
+`.trim()
+    );
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-})
+    // GSAP composable
+    if (answers.gsap) {
+      const composablesDir = path.join(projectDir, "src/composables");
+      fs.mkdirSync(composablesDir, { recursive: true });
+      write(
+        path.join(composablesDir, answers.ts ? "useGsap.ts" : "useGsap.js"),
+        `
+import gsap from "gsap";
 
-export default router
-`
-      );
-      // Create minimal Home.vue and About.vue
-      const viewsDir = path.join('src', 'views');
-      if (!fs.existsSync(viewsDir)) fs.mkdirSync(viewsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(viewsDir, 'Home.vue'),
-        `<template><div class="text-2xl font-bold">Home Page</div></template>`
-      );
-      fs.writeFileSync(
-        path.join(viewsDir, 'About.vue'),
-        `<template><div class="text-2xl font-bold">About Page</div></template>`
-      );
-    }
-
-    // --- Section 8: Update main.js/ts for Pinia, Router, and Tailwind ---
-    const mainPath = path.join('src', `main.${useTypeScript ? 'ts' : 'js'}`);
-    let mainContent = fs.readFileSync(mainPath, 'utf-8');
-    // Import main.css
-    if (useTailwind && !mainContent.includes("import './assets/main.css'")) {
-      mainContent = `import './assets/main.css'\n` + mainContent;
-    }
-    // Import and use Pinia
-    if (usePinia && !mainContent.includes('createPinia')) {
-      mainContent = mainContent.replace(
-        /(import\s+{[^}]*createApp[^}]*}\s+from\s+['"]vue['"];?)/,
-        `$1\nimport { createPinia } from 'pinia';`
-      );
-      mainContent = mainContent.replace(
-        /(const\s+app\s*=\s*createApp\(App\);?)/,
-        `$1\napp.use(createPinia());`
+export function useGsap() {
+  const fadeIn = (el${answers.ts ? ": HTMLElement" : ""}) => {
+    gsap.from(el, { opacity: 0, y: 30, duration: 0.6 });
+  };
+  return { fadeIn };
+}
+`.trim()
       );
     }
-    // Import and use Router
-    if (useRouter && !mainContent.includes('router')) {
-      mainContent = mainContent.replace(
-        /(import\s+App\s+from\s+['"].\/App.vue['"];?)/,
-        `$1\nimport router from './router';`
-      );
-      mainContent = mainContent.replace(
-        /(const\s+app\s*=\s*createApp\(App\);?)/,
-        `$1\napp.use(router);`
-      );
-    }
-    fs.writeFileSync(mainPath, mainContent);
 
-    // --- Section 9: Generate HelloWorld.vue Demonstrating Features ---
-    const helloWorldPath = path.join('src', 'components', 'HelloWorld.vue');
-    let helloWorldContent = `<template>
-  <div class="p-8 bg-gradient-to-br from-blue-100 to-purple-100 min-h-screen flex flex-col items-center">
-    <h1 ref="animatedTitle" class="text-4xl font-bold text-blue-700 mb-4">Hello, Vue + Vite${useTailwind ? ' + Tailwind' : ''}${usePinia ? ' + Pinia' : ''}${useRouter ? ' + Router' : ''}${useGSAP ? ' + GSAP' : ''}!</h1>
-    ${usePinia ? `<p class="mb-4 text-lg">Pinia count: <span class="font-mono text-green-600">{{ counter.count }}</span></p>
-    <button @click="counter.increment()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Increment Pinia</button>` : ''}
-    ${useRouter ? `<div class="mt-6">
-      <RouterLink to="/" class="text-blue-700 underline mr-4">Home</RouterLink>
-      <RouterLink to="/about" class="text-purple-700 underline">About</RouterLink>
-    </div>` : ''}
-  </div>
-</template>
+    // HelloWorld.vue
+    const viewsDir = path.join(projectDir, "src/views");
+    fs.mkdirSync(viewsDir, { recursive: true });
+    write(
+      path.join(viewsDir, "HelloWorld.vue"),
+      `
+<script setup${answers.ts ? ' lang="ts"' : ""}>
+import { useCounterStore } from "../stores/counter";
+${answers.gsap ? 'import { useGsap } from "../composables/useGsap";' : ""}
+import { onMounted } from "vue";
 
-<script setup${useTypeScript ? ' lang="ts"' : ''}>
-import { ref, onMounted } from 'vue'
-${usePinia ? `import { useCounterStore } from '../stores/counter'` : ''}
-${useGSAP ? `import gsap from 'gsap'` : ''}
-${useRouter ? `import { RouterLink } from 'vue-router'` : ''}
-
-${usePinia ? 'const counter = useCounterStore()' : ''}
-const animatedTitle = ref(null)
+const store = useCounterStore();
+${answers.gsap ? "const { fadeIn } = useGsap();" : ""}
 
 onMounted(() => {
-  if (animatedTitle.value) {
-    ${useGSAP ? `gsap.fromTo(animatedTitle.value, { y: -50, opacity: 0 }, { y: 0, opacity: 1, duration: 1, ease: 'bounce.out' })` : ''}
-  }
-})
+  ${answers.gsap ? "fadeIn(document.querySelector('h1'));" : ""}
+});
 </script>
-`;
-    fs.writeFileSync(helloWorldPath, helloWorldContent);
 
-    // --- Section 10: Update App.vue to Use HelloWorld.vue ---
-    const appVuePath = path.join('src', 'App.vue');
-    let appVueContent = `<template>
-  <HelloWorld />
+<template>
+  <div class="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-8">
+    <h1 class="text-4xl font-bold mb-6">Vue + Pinia + Tailwind ${answers.gsap ? "+ GSAP" : ""} 🚀</h1>
+    <p class="mb-4">Count: {{ store.count }}</p>
+    <button
+      class="px-4 py-2 bg-white text-black rounded hover:bg-gray-200 transition"
+      @click="store.increment"
+    >
+      Increment
+    </button>
+  </div>
 </template>
+`.trim()
+    );
 
-<script setup${useTypeScript ? ' lang="ts"' : ''}>
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-`;
-    fs.writeFileSync(appVuePath, appVueContent);
+    // App.vue + main.ts
+    write(
+      path.join(projectDir, "src/App.vue"),
+      `<template><RouterView /></template>`
+    );
 
-    // --- Section 11: Final Output ---
-    console.log('\n✅ Project scaffolded successfully!');
-    console.log(`\nNext steps:
-  cd ${projectName}
-  npm run dev
-`);
-  } catch (err) {
-    // Cleanup on failure
-    if (fs.existsSync(projectPath)) {
-      fs.rmSync(projectPath, { recursive: true, force: true });
-    }
-    throw err;
+    write(
+      path.join(projectDir, answers.ts ? "src/main.ts" : "src/main.js"),
+      `
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import { router } from "./router";
+import App from "./App.vue";
+import "./style.css";
+
+createApp(App).use(createPinia()).use(router).mount("#app");
+`.trim()
+    );
+
+    console.log(
+      "✅ Vue + Tailwind " +
+        (answers.tailwind === "v4" ? "v4" : "v3") +
+        " + Router + Pinia" +
+        (answers.gsap ? " + GSAP" : "") +
+        " ready!"
+    );
+  } catch (error) {
+    console.error("❌ Scaffold failed:", error);
+    process.exit(1);
   }
 }
 
