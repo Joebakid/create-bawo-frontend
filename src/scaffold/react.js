@@ -218,6 +218,27 @@ export function GsapDemo() {
   /* -------------------------------------------------
    * main.jsx / tsx
    * ------------------------------------------------- */
+
+if (answers.redux || answers.rtkQuery) {
+  // Ensure store folder exists
+  ensure(path.join(projectDir, "src", "store"));
+
+  // Create store.js or store.ts
+  write(
+    path.join(projectDir, "src", "store", `store.${answers.ts ? "ts" : "js"}`),
+    `
+import { configureStore } from "@reduxjs/toolkit";
+
+export const store = configureStore({
+  reducer: {},
+});
+
+export default store;
+`.trimStart()
+  );
+}
+
+
   let main = `
 import React from "react";
 import { createRoot } from "react-dom/client";
