@@ -33,14 +33,24 @@ async function scaffoldVue(projectDir, answers) {
       console.log("✅ GSAP installed.");
     }
 
-    /* ---------------- TAILWIND v3 ONLY ---------------- */
-    console.log("⏳ Installing Tailwind CSS v3...");
-    await exec(
-      "npm",
-      ["install", "-D", "tailwindcss@^3", "postcss", "autoprefixer"],
-      projectDir
-    );
-    console.log("✅ Tailwind CSS v3 installed.");
+    /* ---------------- TAILWIND ---------------- */
+    if (answers.tailwind === "v4") {
+      console.log("⏳ Installing Tailwind CSS v4...");
+      await exec(
+        "npm",
+        ["install", "-D", "tailwindcss@^4", "postcss", "autoprefixer"],
+        projectDir
+      );
+      console.log("✅ Tailwind CSS v4 installed.");
+    } else {
+      console.log("⏳ Installing Tailwind CSS v3...");
+      await exec(
+        "npm",
+        ["install", "-D", "tailwindcss@^3", "postcss", "autoprefixer"],
+        projectDir
+      );
+      console.log("✅ Tailwind CSS v3 installed.");
+    }
 
     // Remove default style if exists
     const defaultStylePath = path.join(projectDir, "src/style.css");
@@ -210,7 +220,9 @@ createApp(App)
     );
 
     console.log(
-      "✅ Vue + Tailwind v3 + Router + Pinia" +
+      "✅ Vue + Tailwind " +
+        (answers.tailwind === "v4" ? "v4" : "v3") +
+        " + Router + Pinia" +
         (answers.gsap ? " + GSAP" : "") +
         " ready!"
     );
