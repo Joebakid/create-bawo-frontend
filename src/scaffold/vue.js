@@ -1,78 +1,86 @@
 /* eslint-disable no-console */
-const fs = require("fs")
-const { run: exec, write, path } = require("../utils")
+const fs = require("fs");
+const { run: exec, write, path } = require("../utils");
 
-function scaffoldVue(projectDir, answers) {
-  console.log("🟢 Creating Vue 3 + Vite project...")
+async function scaffoldVue(projectDir, answers) {
+  try {
+    console.log("🟢 Creating Vue 3 + Vite project...");
 
-  /* ---------------- CREATE APP ---------------- */
-  const viteArgs = ["create", "vite@latest", answers.name, "--"]
+    /* ---------------- CREATE APP ---------------- */
+    const viteArgs = ["create", "vite@latest", answers.name, "--"];
+    if (answers.ts) viteArgs.push("--template", "vue-ts");
+    else viteArgs.push("--template", "vue");
 
-  if (answers.ts) {
-    viteArgs.push("--template", "vue-ts")
-  } else {
-    viteArgs.push("--template", "vue")
-  }
+    console.log("⏳ Running Vite project creation...");
+    await exec("npm", viteArgs, path.dirname(projectDir));
+    console.log("✅ Vite project created.");
 
-  exec("npm", viteArgs, path.dirname(projectDir))
+    console.log("⏳ Installing base dependencies...");
+    await exec("npm", ["install"], projectDir);
+    console.log("✅ Base dependencies installed.");
 
-  exec("npm", ["install"], projectDir)
+    /* ---------------- CORE LIBS ---------------- */
+    console.log("⏳ Installing Vue Router & Pinia...");
+    await exec("npm", ["install", "vue-router", "pinia"], projectDir);
+    console.log("✅ Vue Router & Pinia installed.");
 
-  /* ---------------- CORE LIBS ---------------- */
-  console.log("🔌 Installing Vue Router & Pinia...")
-  exec("npm", ["install", "vue-router", "pinia"], projectDir)
+    if (answers.gsap) {
+      console.log("⏳ Installing GSAP...");
+      await exec("npm", ["install", "gsap"], projectDir);
+      console.log("✅ GSAP installed.");
+    }
 
-  if (answers.gsap) {
-    console.log("🎞 Installing GSAP...")
-    exec("npm", ["install", "gsap"], projectDir)
-  }
+    /* ---------------- TAILWIND v3 ONLY ---------------- */
+    console.log("⏳ Installing Tailwind CSS v3...");
+    await exec(
+      "npm",
+      ["install", "-D", "tailwindcss@^3", "postcss", "autoprefixer"],
+      projectDir
+    );
+    console.log("✅ Tailwind CSS v3 installed.");
 
-  /* ---------------- TAILWIND v3 ONLY ---------------- */
-  console.log("🎨 Installing Tailwind CSS v3...")
+    // Remove default style if exists
+    const defaultStylePath = path.join(projectDir, "src/style.css");
+    if (fs.existsSync(defaultStylePath)) fs.unlinkSync(defaultStylePath);
 
-  exec("npm", ["install", "-D", "tailwindcss@^3", "postcss", "autoprefixer"], projectDir)
-
-  const defaultStylePath = path.join(projectDir, "src/style.css")
-  if (fs.existsSync(defaultStylePath)) {
-    fs.unlinkSync(defaultStylePath)
-  }
-
-  write(
-    path.join(projectDir, "postcss.config.js"),
-    `export default {
+    // PostCSS config
+    write(
+      path.join(projectDir, "postcss.config.js"),
+      `export default {
   plugins: {
     tailwindcss: {},
     autoprefixer: {},
   },
-};`,
-  )
+};`
+    );
 
-  write(
-    path.join(projectDir, "tailwind.config.js"),
-    `/** @type {import('tailwindcss').Config} */
+    // Tailwind config
+    write(
+      path.join(projectDir, "tailwind.config.js"),
+      `/** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"],
   theme: {
     extend: {},
   },
   plugins: [],
-};`,
-  )
+};`
+    );
 
-  write(
-    path.join(projectDir, "src/style.css"),
-    `@tailwind base;
+    // Tailwind base styles
+    write(
+      path.join(projectDir, "src/style.css"),
+      `@tailwind base;
 @tailwind components;
-@tailwind utilities;`,
-  )
+@tailwind utilities;`
+    );
 
-  /* ---------------- ROUTER ---------------- */
-  const routerDir = path.join(projectDir, "src/router")
-  fs.mkdirSync(routerDir, { recursive: true })
-
-  write(
-    path.join(routerDir, answers.ts ? "index.ts" : "index.js"),
-    `
+    /* ---------------- ROUTER ---------------- */
+    const routerDir = path.join(projectDir, "src/router");
+    fs.mkdirSync(routerDir, { recursive: true });
+    write(
+      path.join(routerDir, answers.ts ? "index.ts" : "index.js"),
+      `
 import { createRouter, createWebHistory } from "vue-router";
 import Home from "../views/Home.vue";
 
@@ -80,16 +88,15 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [{ path: "/", component: Home }],
 });
-`.trim(),
-  )
+`.trim()
+    );
 
-  /* ---------------- PINIA STORE ---------------- */
-  const storeDir = path.join(projectDir, "src/stores")
-  fs.mkdirSync(storeDir, { recursive: true })
-
-  write(
-    path.join(storeDir, answers.ts ? "counter.ts" : "counter.js"),
-    `
+    /* ---------------- PINIA STORE ---------------- */
+    const storeDir = path.join(projectDir, "src/stores");
+    fs.mkdirSync(storeDir, { recursive: true });
+    write(
+      path.join(storeDir, answers.ts ? "counter.ts" : "counter.js"),
+      `
 import { defineStore } from "pinia";
 
 export const useCounterStore = defineStore("counter", {
@@ -100,18 +107,18 @@ export const useCounterStore = defineStore("counter", {
     },
   },
 });
-`.trim(),
-  )
+`.trim()
+    );
 
-  /* ---------------- GSAP COMPOSABLE ---------------- */
-  if (answers.gsap) {
-    const composablesDir = path.join(projectDir, "src/composables")
-    fs.mkdirSync(composablesDir, { recursive: true })
+    /* ---------------- GSAP COMPOSABLE ---------------- */
+    if (answers.gsap) {
+      const composablesDir = path.join(projectDir, "src/composables");
+      fs.mkdirSync(composablesDir, { recursive: true });
 
-    write(
-      path.join(composablesDir, answers.ts ? "useGsap.ts" : "useGsap.js"),
-      answers.ts
-        ? `
+      write(
+        path.join(composablesDir, answers.ts ? "useGsap.ts" : "useGsap.js"),
+        answers.ts
+          ? `
 import gsap from "gsap";
 
 export function useGsap() {
@@ -122,7 +129,7 @@ export function useGsap() {
   return { fadeIn };
 }
 `.trim()
-        : `
+          : `
 import gsap from "gsap";
 
 export function useGsap() {
@@ -132,17 +139,17 @@ export function useGsap() {
 
   return { fadeIn };
 }
-`.trim(),
-    )
-  }
+`.trim()
+      );
+    }
 
-  /* ---------------- VIEW ---------------- */
-  const viewsDir = path.join(projectDir, "src/views")
-  fs.mkdirSync(viewsDir, { recursive: true })
+    /* ---------------- VIEW ---------------- */
+    const viewsDir = path.join(projectDir, "src/views");
+    fs.mkdirSync(viewsDir, { recursive: true });
 
-  write(
-    path.join(viewsDir, "Home.vue"),
-    `
+    write(
+      path.join(viewsDir, "Home.vue"),
+      `
 <script setup${answers.ts ? ' lang="ts"' : ""}>
 import { useCounterStore } from "../stores/counter";
 ${answers.gsap ? 'import { useGsap } from "../composables/useGsap";' : ""}
@@ -172,20 +179,20 @@ onMounted(() => {
     </button>
   </div>
 </template>
-`.trim(),
-  )
+`.trim()
+    );
 
-  /* ---------------- APP + MAIN ---------------- */
-  write(
-    path.join(projectDir, "src/App.vue"),
-    `<template>
+    /* ---------------- APP + MAIN ---------------- */
+    write(
+      path.join(projectDir, "src/App.vue"),
+      `<template>
   <RouterView />
-</template>`,
-  )
+</template>`
+    );
 
-  write(
-    path.join(projectDir, answers.ts ? "src/main.ts" : "src/main.js"),
-    `
+    write(
+      path.join(projectDir, answers.ts ? "src/main.ts" : "src/main.js"),
+      `
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import { router } from "./router";
@@ -196,10 +203,18 @@ createApp(App)
   .use(createPinia())
   .use(router)
   .mount("#app");
-`.trim(),
-  )
+`.trim()
+    );
 
-  console.log("✅ Vue + Tailwind v3 + Router + Pinia" + (answers.gsap ? " + GSAP" : "") + " ready!")
+    console.log(
+      "✅ Vue + Tailwind v3 + Router + Pinia" +
+        (answers.gsap ? " + GSAP" : "") +
+        " ready!"
+    );
+  } catch (error) {
+    console.error("❌ Scaffold failed:", error);
+    process.exit(1);
+  }
 }
 
-module.exports = { scaffoldVue }
+module.exports = { scaffoldVue };
