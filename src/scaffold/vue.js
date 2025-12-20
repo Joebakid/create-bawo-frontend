@@ -6,17 +6,15 @@ async function scaffoldVue(projectDir, answers) {
   try {
     console.log("🟢 Creating Vue 3 + Vite project...");
 
-    /* ---------------- CREATE APP ---------------- */
-    const viteArgs = ["create", "vite@latest", answers.name];
-    if (answers.ts) {
-      viteArgs.push("--", "--template", "vue-ts");
-    } else {
-      viteArgs.push("--", "--template", "vue");
-    }
-
-    console.log("⏳ Running Vite project creation...");
-    await exec("npm", viteArgs, path.dirname(projectDir));
-    console.log("✅ Vite project created.");
+    /* ---------------- CREATE APP (no auto-install) ---------------- */
+    const template = answers.ts ? "vue-ts" : "vue";
+    console.log("⏳ Copying Vite template files...");
+    await exec(
+      "npx",
+      ["degit", `vitejs/vite/packages/create-vite/template-${template}`, answers.name],
+      path.dirname(projectDir)
+    );
+    console.log("✅ Vite template copied.");
 
     console.log("⏳ Installing base dependencies...");
     await exec("npm", ["install"], projectDir);
@@ -34,23 +32,14 @@ async function scaffoldVue(projectDir, answers) {
     }
 
     /* ---------------- TAILWIND ---------------- */
-    if (answers.tailwind === "v4") {
-      console.log("⏳ Installing Tailwind CSS v4...");
-      await exec(
-        "npm",
-        ["install", "-D", "tailwindcss@^4", "postcss", "autoprefixer"],
-        projectDir
-      );
-      console.log("✅ Tailwind CSS v4 installed.");
-    } else {
-      console.log("⏳ Installing Tailwind CSS v3...");
-      await exec(
-        "npm",
-        ["install", "-D", "tailwindcss@^3", "postcss", "autoprefixer"],
-        projectDir
-      );
-      console.log("✅ Tailwind CSS v3 installed.");
-    }
+    const tailwindVersion = answers.tailwind === "v4" ? "^4" : "^3";
+    console.log(`⏳ Installing Tailwind CSS ${answers.tailwind}...`);
+    await exec(
+      "npm",
+      ["install", "-D", `tailwindcss@${tailwindVersion}`, "postcss", "autoprefixer"],
+      projectDir
+    );
+    console.log(`✅ Tailwind CSS ${answers.tailwind} installed.`);
 
     // Remove default style if exists
     const defaultStylePath = path.join(projectDir, "src/style.css");
