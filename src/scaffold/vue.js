@@ -7,9 +7,12 @@ async function scaffoldVue(projectDir, answers) {
     console.log("🟢 Creating Vue 3 + Vite project...");
 
     /* ---------------- CREATE APP ---------------- */
-    const viteArgs = ["create", "vite@latest", answers.name, "--"];
-    if (answers.ts) viteArgs.push("--template", "vue-ts");
-    else viteArgs.push("--template", "vue");
+    const viteArgs = ["create", "vite@latest", answers.name];
+    if (answers.ts) {
+      viteArgs.push("--", "--template", "vue-ts");
+    } else {
+      viteArgs.push("--", "--template", "vue");
+    }
 
     console.log("⏳ Running Vite project creation...");
     await exec("npm", viteArgs, path.dirname(projectDir));
