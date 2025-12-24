@@ -199,7 +199,7 @@ async function main() {
     options.ts ??= true;
     options.tailwind ??= "v3";
     options["state-mgmt"] ??=
-      options.framework === "vue" ? "pinia" : "zustand";
+      options.framework === "vue" ? "pinia" : "none";
     options.framer ??= false;
     options.gsap ??= false;
     options.start = true;

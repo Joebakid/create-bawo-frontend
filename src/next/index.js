@@ -11,7 +11,7 @@ async function runNext(argv) {
   const projectDir = path.resolve(process.cwd(), projectName);
 
   /* -------------------------------------------------
-   * Create project directory (ONCE)
+   * Create project directory
    * ------------------------------------------------- */
   if (!fs.existsSync(projectDir)) {
     fs.mkdirSync(projectDir, { recursive: true });
@@ -26,30 +26,24 @@ async function runNext(argv) {
   }
 
   /* -------------------------------------------------
-   * -y / --yes defaults (NO PROMPTS)
+   * -y / --yes MODE (RESPECT FLAGS)
    * ------------------------------------------------- */
   if (argv.y || argv.yes) {
     argv.ts ??= true;
     argv.tailwind ??= "v3";
-    argv.ui ??= "none";
+    argv["state-mgmt"] ??= "zustand";
 
-    // state
-    argv.redux = false;
-    argv.rtkQuery = false;
-    argv.zustand = false;
-    argv.reactQuery = false;
-    argv.swr = false;
-
-    // animations
-    argv.framer = false;
-    argv.gsap = false;
+    // 🚫 DO NOT OVERRIDE FLAGS
+    argv.framer ??= false;
+    argv.gsap ??= false;
   }
 
   /* -------------------------------------------------
-   * Safety defaults (non -y runs)
+   * Safety defaults
    * ------------------------------------------------- */
   argv.ts ??= false;
   argv.tailwind ??= "v3";
+  argv["state-mgmt"] ??= "none";
 
   /* -------------------------------------------------
    * Run scaffold

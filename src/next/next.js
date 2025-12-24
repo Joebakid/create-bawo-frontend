@@ -2,7 +2,6 @@
 const fs = require("fs");
 const path = require("path");
 const { write, ensure, read, run } = require("../utils");
-const { setupShadcn } = require("../setup/shadcn");
 
 /* -------------------------------------------------
  * Helpers
@@ -42,7 +41,7 @@ async function scaffoldNext(projectDir, answers) {
   /* -------------------------------------------------
    * Dependencies
    * ------------------------------------------------- */
-  const deps = ["react", "react-dom", "next"];
+  const deps = ["next", "react", "react-dom"];
   const dev = [];
 
   if (isTW4) {
@@ -55,15 +54,7 @@ async function scaffoldNext(projectDir, answers) {
     dev.push("typescript", "@types/react", "@types/react-dom", "@types/node");
   }
 
-  // ---- State management ----
-  if (state === "redux" || state === "rtk-query") {
-    deps.push("@reduxjs/toolkit", "react-redux");
-  }
-  if (state === "react-query") deps.push("@tanstack/react-query");
-  if (state === "swr") deps.push("swr");
   if (state === "zustand") deps.push("zustand");
-
-  // ---- Animations ----
   if (answers.framer) deps.push("framer-motion");
   if (answers.gsap) deps.push("gsap");
 
@@ -74,22 +65,13 @@ async function scaffoldNext(projectDir, answers) {
   run("npm", ["install", "-D", ...dev], projectDir);
 
   /* -------------------------------------------------
-   * SAFE package.json handling (ESM FIX)
+   * package.json (ESM FIX)
    * ------------------------------------------------- */
   const pkgPath = path.join(projectDir, "package.json");
-  let pkg = {};
+  const pkg = JSON.parse(read(pkgPath));
 
-  try {
-    const raw = read(pkgPath);
-    pkg = raw ? JSON.parse(raw) : {};
-  } catch {
-    console.warn("⚠️ package.json invalid — regenerating safely.");
-    pkg = {};
-  }
+  delete pkg.type; // REQUIRED FOR NEXT APP ROUTER
 
-  delete pkg.type; // 🔥 REQUIRED for Next.js App Router
-
-  pkg.name = pkg.name || path.basename(projectDir);
   pkg.private = true;
   pkg.scripts = {
     dev: "next dev",
@@ -100,157 +82,155 @@ async function scaffoldNext(projectDir, answers) {
   write(pkgPath, JSON.stringify(pkg, null, 2));
 
   /* -------------------------------------------------
-   * Config files
-   * ------------------------------------------------- */
-  if (answers.ts) {
-    write(
-      path.join(projectDir, "next.config.ts"),
-      `import type { NextConfig } from "next";
-const nextConfig: NextConfig = {};
-export default nextConfig;
-`
-    );
-
-    write(
-      path.join(projectDir, "next-env.d.ts"),
-      `/// <reference types="next" />
-/// <reference types="next/image-types/global" />`
-    );
-  } else {
-    write(
-      path.join(projectDir, "next.config.mjs"),
-      `const nextConfig = {};
-export default nextConfig;`
-    );
-  }
-
-  /* -------------------------------------------------
-   * App Router structure
+   * App structure
    * ------------------------------------------------- */
   ensure(projectDir, "app");
+  ensure(projectDir, "app/components");
+  ensure(projectDir, "store");
 
   /* -------------------------------------------------
    * Tailwind
    * ------------------------------------------------- */
-  if (isTW4) {
-    write(
-      path.join(projectDir, "postcss.config.cjs"),
-      `module.exports = {
-  plugins: { "@tailwindcss/postcss": {} },
-};`
-    );
-  } else {
-    write(
-      path.join(projectDir, "tailwind.config.cjs"),
-      `module.exports = {
-  content: ["./app/**/*.{js,ts,jsx,tsx}"],
-  theme: { extend: {} },
-  plugins: [],
-};`
-    );
-
-    write(
-      path.join(projectDir, "postcss.config.cjs"),
-      `module.exports = {
-  plugins: { tailwindcss: {}, autoprefixer: {} },
-};`
-    );
-  }
+  write(
+    path.join(projectDir, "postcss.config.cjs"),
+    isTW4
+      ? `module.exports = { plugins: { "@tailwindcss/postcss": {} } };`
+      : `module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };`
+  );
 
   write(
     path.join(projectDir, "app/globals.css"),
     isTW4
       ? `@import "tailwindcss";`
-      : `@tailwind base;
-@tailwind components;
-@tailwind utilities;`
+      : `@tailwind base;\n@tailwind components;\n@tailwind utilities;`
   );
 
   /* -------------------------------------------------
-   * State Providers
+   * Zustand store
    * ------------------------------------------------- */
-  if (state === "redux" || state === "rtk-query") {
-    ensure(projectDir, "store");
+  if (state === "zustand") {
     write(
-      path.join(projectDir, "store/store.ts"),
+      path.join(projectDir, "store/useStore.ts"),
       `
-import { configureStore } from "@reduxjs/toolkit";
+import { create } from "zustand";
 
-export const store = configureStore({
-  reducer: {},
-});
-`.trim()
-    );
-  }
-
-  if (state === "react-query") {
-    ensure(projectDir, "store");
-    write(
-      path.join(projectDir, "store/queryClient.ts"),
-      `
-import { QueryClient } from "@tanstack/react-query";
-export const queryClient = new QueryClient();
+export const useStore = create((set) => ({
+  count: 0,
+  inc: () => set((s) => ({ count: s.count + 1 })),
+}));
 `.trim()
     );
   }
 
   /* -------------------------------------------------
-   * layout + page (PROVIDER AWARE)
+   * Client Providers
    * ------------------------------------------------- */
   write(
-    path.join(projectDir, "app", `layout.${ext}`),
+    path.join(projectDir, "app/providers.tsx"),
+    `
+"use client";
+
+export default function Providers({ children }) {
+  return children;
+}
+`.trim()
+  );
+
+  /* -------------------------------------------------
+   * Demo components
+   * ------------------------------------------------- */
+  if (state === "zustand") {
+    write(
+      path.join(projectDir, "app/components/Counter.tsx"),
+      `
+"use client";
+import { useStore } from "../../store/useStore";
+
+export default function Counter() {
+  const { count, inc } = useStore();
+  return (
+    <button
+      onClick={inc}
+      className="px-4 py-2 bg-blue-600 text-white rounded"
+    >
+      Count: {count}
+    </button>
+  );
+}
+`.trim()
+    );
+  }
+
+  if (answers.framer) {
+    write(
+      path.join(projectDir, "app/components/MotionDemo.tsx"),
+      `
+"use client";
+import { motion } from "framer-motion";
+
+export default function MotionDemo() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-4 bg-emerald-500 text-white rounded"
+    >
+      Framer Motion works 🚀
+    </motion.div>
+  );
+}
+`.trim()
+    );
+  }
+
+  /* -------------------------------------------------
+   * layout + page
+   * ------------------------------------------------- */
+  write(
+    path.join(projectDir, "app/layout.tsx"),
     `
 import "./globals.css";
-${state === "redux" ? 'import { Provider } from "react-redux"; import { store } from "../store/store";' : ""}
-${state === "react-query" ? 'import { QueryClientProvider } from "@tanstack/react-query"; import { queryClient } from "../store/queryClient";' : ""}
+import Providers from "./providers";
 
 export default function RootLayout({ children }) {
-  const App = ${state === "redux"
-      ? "<Provider store={store}>{children}</Provider>"
-      : state === "react-query"
-      ? "<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>"
-      : "children"};
-
   return (
     <html lang="en">
-      <body>{App}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
-`.trimStart()
+`.trim()
   );
 
   write(
-    path.join(projectDir, "app", `page.${ext}`),
+    path.join(projectDir, "app/page.tsx"),
     `
+import Counter from "./components/Counter";
+import MotionDemo from "./components/MotionDemo";
+
 export default function Page() {
   return (
-    <main className="p-8 max-w-3xl mx-auto">
+    <main className="p-8 space-y-6">
       <h1 className="text-3xl font-bold">create-bawo-frontend</h1>
-      <p className="text-gray-500">
-        Next.js + Tailwind ${isTW4 ? "v4" : "v3"} ready 🚀
-      </p>
+      <Counter />
+      <MotionDemo />
     </main>
   );
 }
-`.trimStart()
+`.trim()
   );
 
   /* -------------------------------------------------
    * Summary
    * ------------------------------------------------- */
-  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-  const size = formatSize(dirSize(projectDir));
-
   console.log("\n📊 Scaffold Summary");
   console.log("────────────────────────");
-  console.log("Framework      : Next.js (App Router)");
-  console.log("Language       :", answers.ts ? "TypeScript" : "JavaScript");
-  console.log("Tailwind       :", isTW4 ? "v4 (experimental)" : "v3 (stable)");
-  console.log("Animations     :", answers.framer || answers.gsap ? "Enabled" : "None");
-  console.log("State Mgmt     :", state);
-  console.log("Project size   :", size);
-  console.log("Time taken     :", `${elapsed}s`);
+  console.log("Framework  : Next.js (App Router)");
+  console.log("State Mgmt :", state);
+  console.log("Animations :", answers.framer || answers.gsap ? "Enabled" : "None");
+  console.log("Project size:", formatSize(dirSize(projectDir)));
   console.log("────────────────────────\n");
 }
 
