@@ -32,7 +32,7 @@ async function runVue(argv) {
     argv.ts ??= true;
     argv.tailwind ??= "v3";
 
-    // vue always uses router + pinia in your template
+    // Vue template defaults
     argv.animations = [];
     argv.gsap = false;
   }
@@ -49,6 +49,8 @@ async function runVue(argv) {
   console.log("🚀 Scaffolding Vue 3 + Vite project...");
   await scaffoldVue(projectDir, argv);
   console.log("✅ Vue scaffold complete.");
+
+  return projectDir;
 }
 
 module.exports = { run: runVue };

@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 const fs = require("fs");
 const path = require("path");
-const { write, ensure, run: exec } = require("../utils");
+const { write, ensure, run: exec, copyDir } = require("../utils");
 
 /* -------------------------------------------------
  * Helpers
@@ -23,14 +23,42 @@ function formatSize(bytes) {
 }
 
 /* -------------------------------------------------
+ * Tailwind Injector (Vue)
+ * ------------------------------------------------- */
+async function injectTailwindVue(projectDir) {
+  console.log("🎨 Injecting Tailwind CSS v3 (Vue)");
+
+  // 1️⃣ Install Tailwind deps (Vue uses v3 only)
+  await exec(
+    "npm",
+    ["install", "-D", "tailwindcss@3.4.14", "postcss", "autoprefixer"],
+    projectDir
+  );
+
+  // 2️⃣ Copy Tailwind v3 files
+  const src = path.join(__dirname, "../tailwind/v3");
+  copyDir(src, projectDir);
+
+  /**
+   * 🚧 FUTURE: Tailwind v4 for Vue
+   *
+   * const src = path.join(__dirname, "../tailwind/v4");
+   * copyDir(src, projectDir);
+   *
+   * Vue tooling does not fully support v4 yet.
+   * We will enable this when it stabilizes.
+   */
+}
+
+/* -------------------------------------------------
  * Vue Scaffold
  * ------------------------------------------------- */
 async function scaffoldVue(projectDir, answers) {
   const start = Date.now();
 
   try {
-    const hasGsap = answers.animations?.includes("gsap") || answers.gsap;
     const isTs = answers.ts;
+    const hasGsap = answers.animations?.includes("gsap") || answers.gsap;
 
     console.log("🟢 Creating Vue 3 + Vite project...");
     console.log("✅ Tailwind CSS v3 (stable)");
@@ -38,7 +66,7 @@ async function scaffoldVue(projectDir, answers) {
     const template = isTs ? "vue-ts" : "vue";
 
     /* -------------------------------------------------
-     * Create project
+     * Create Vite project
      * ------------------------------------------------- */
     await exec(
       "npx",
@@ -51,59 +79,33 @@ async function scaffoldVue(projectDir, answers) {
     }
 
     /* -------------------------------------------------
-     * Install deps
+     * Install base deps
      * ------------------------------------------------- */
     console.log("📦 Installing base dependencies...");
     await exec("npm", ["install"], projectDir);
 
-    console.log("📦 Installing Vue Router + Pinia...");
+    /* -------------------------------------------------
+     * Router + Pinia
+     * ------------------------------------------------- */
+    console.log("📦 Installing vue-router + pinia...");
     await exec(
       "npm",
       ["install", "vue-router@latest", "pinia@latest"],
       projectDir
     );
 
+    /* -------------------------------------------------
+     * Optional GSAP
+     * ------------------------------------------------- */
     if (hasGsap) {
       console.log("📦 Installing GSAP...");
       await exec("npm", ["install", "gsap@latest"], projectDir);
     }
 
-    console.log("📦 Installing Tailwind CSS stack...");
-    await exec(
-      "npm",
-      [
-        "install",
-        "-D",
-        "tailwindcss@^3",
-        "postcss@latest",
-        "autoprefixer@latest",
-      ],
-      projectDir
-    );
-
     /* -------------------------------------------------
-     * Tailwind setup
+     * ✅ Tailwind Injection (SOURCE OF TRUTH)
      * ------------------------------------------------- */
-    await exec("npx", ["tailwindcss", "init", "-p"], projectDir);
-
-    write(
-      path.join(projectDir, "tailwind.config.js"),
-      `/** @type {import('tailwindcss').Config} */
-export default {
-  content: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"],
-  theme: { extend: {} },
-  plugins: [],
-};
-`
-    );
-
-    write(
-      path.join(projectDir, "src/style.css"),
-      `@tailwind base;
-@tailwind components;
-@tailwind utilities;
-`
-    );
+    await injectTailwindVue(projectDir);
 
     /* -------------------------------------------------
      * Router
@@ -128,15 +130,26 @@ export const router = createRouter({
     ensure(path.join(projectDir, "src/views"));
     write(
       path.join(projectDir, "src/views/Home.vue"),
-      `<template>
-  <main class="p-8">
-    <h1 class="text-3xl font-bold">Vue + Tailwind ready 🚀</h1>
+      `
+<template>
+  <main class="min-h-screen flex items-center justify-center bg-gray-50">
+    <div class="text-center space-y-4">
+      <h1 class="text-3xl font-bold">create-bawo-frontend</h1>
+      <p class="text-gray-500">Vue + Vite starter ready 🚀</p>
+      <a
+        href="https://create-bawo-frontend.vercel.app"
+        class="text-blue-600 underline"
+      >
+        Documentation →
+      </a>
+    </div>
   </main>
-</template>`
+</template>
+`.trim()
     );
 
     /* -------------------------------------------------
-     * Pinia store
+     * Pinia Store
      * ------------------------------------------------- */
     ensure(path.join(projectDir, "src/stores"));
     write(
@@ -156,7 +169,7 @@ export const useCounterStore = defineStore("counter", {
     );
 
     /* -------------------------------------------------
-     * GSAP composable
+     * Optional GSAP composable
      * ------------------------------------------------- */
     if (hasGsap) {
       ensure(path.join(projectDir, "src/composables"));
@@ -197,7 +210,10 @@ import { router } from "./router";
 import App from "./App.vue";
 import "./style.css";
 
-createApp(App).use(createPinia()).use(router).mount("#app");
+createApp(App)
+  .use(createPinia())
+  .use(router)
+  .mount("#app");
 `.trim()
     );
 
@@ -209,14 +225,14 @@ createApp(App).use(createPinia()).use(router).mount("#app");
 
     console.log("\n📊 Scaffold Summary");
     console.log("────────────────────────");
-    console.log("Framework      : Vue 3 + Vite");
-    console.log("Language       :", isTs ? "TypeScript" : "JavaScript");
-    console.log("Tailwind       : v3 (stable)");
-    console.log("Router         : vue-router");
-    console.log("State          : Pinia");
-    console.log("Animations     :", hasGsap ? "GSAP" : "None");
-    console.log("Project size   :", size);
-    console.log("Time taken     :", `${elapsed}s`);
+    console.log("Framework    : Vue 3 + Vite");
+    console.log("Language     :", isTs ? "TypeScript" : "JavaScript");
+    console.log("Tailwind     : v3 (stable)");
+    console.log("Router       : vue-router");
+    console.log("State        : Pinia");
+    console.log("Animations   :", hasGsap ? "GSAP" : "None");
+    console.log("Project size :", size);
+    console.log("Time taken   :", `${elapsed}s`);
     console.log("────────────────────────\n");
   } catch (err) {
     console.error("❌ Vue scaffold failed:", err);
