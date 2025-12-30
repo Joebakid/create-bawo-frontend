@@ -16,13 +16,11 @@ const { addFont, registry } = require("../src/fonts");
  * --------------------------------- */
 function copyDir(src, dest) {
   if (!fs.existsSync(src)) return;
-
   fs.mkdirSync(dest, { recursive: true });
 
   for (const entry of fs.readdirSync(src)) {
     const srcPath = path.join(src, entry);
     const destPath = path.join(dest, entry);
-
     if (fs.statSync(srcPath).isDirectory()) {
       copyDir(srcPath, destPath);
     } else {
@@ -31,53 +29,16 @@ function copyDir(src, dest) {
   }
 }
 
-/* ---------------------------------
- * SUBCOMMAND: add font
- * --------------------------------- */
-const rawArgs = hideBin(process.argv);
-
-if (rawArgs[0] === "add" && rawArgs[1] === "font") {
-  const fontKey = rawArgs[2];
-
-  if (!fontKey) {
-    console.error("❌ Please specify a font.");
-    console.log("\nAvailable fonts:");
-    Object.keys(registry).forEach((f) => console.log(" -", f));
-    process.exit(1);
-  }
-
-  const projectDir = process.cwd();
-
-  if (!fs.existsSync(path.join(projectDir, "package.json"))) {
-    console.error("❌ Run this inside a project directory.");
-    process.exit(1);
-  }
-
-  if (!registry[fontKey]) {
-    console.error(`❌ Unknown font: ${fontKey}`);
-    console.log("\nAvailable fonts:");
-    Object.keys(registry).forEach((f) => console.log(" -", f));
-    process.exit(1);
-  }
-
-  console.log(`🔤 Installing font: ${fontKey}...\n`);
-
-  addFont(projectDir, fontKey)
-    .then(() => {
-      console.log(`✅ Font "${fontKey}" installed successfully.`);
-    })
-    .catch((err) => {
-      console.error("❌ Font installation failed:", err.message);
-      process.exit(1);
-    });
-
-  return;
+function emptyDir(dir) {
+  if (!fs.existsSync(dir)) return;
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
 }
 
 /* ---------------------------------
  * CLI FLAGS
  * --------------------------------- */
-const argv = yargs(rawArgs)
+const argv = yargs(hideBin(process.argv))
   .scriptName("create-bawo-frontend")
   .usage("$0 [project-name] [options]")
   .option("framework", { type: "string" })
@@ -87,10 +48,7 @@ const argv = yargs(rawArgs)
   .option("ui", { type: "string" })
   .option("framer", { type: "boolean" })
   .option("gsap", { type: "boolean" })
-  .option("font", {
-    type: "string",
-    describe: "Install a font (e.g. inter, poppins)",
-  })
+  .option("font", { type: "string" })
   .option("preset", { type: "string" })
   .option("no-start", { type: "boolean" })
   .option("skip-docs", { type: "boolean" })
@@ -102,32 +60,20 @@ const argv = yargs(rawArgs)
  * Presets
  * --------------------------------- */
 function applyPreset(options) {
-  switch (options.preset) {
-    case "minimal":
-      return {
-        ts: false,
-        framer: false,
-        gsap: false,
-        ui: "none",
-        "state-mgmt": "none",
-      };
-    case "animation":
-      return { framer: true, gsap: true };
-    case "full":
-      return {
-        ts: true,
-        framer: true,
-        gsap: true,
-        ui: "shadcn",
-        "state-mgmt": "redux",
-      };
-    default:
-      return {};
+  if (options.preset === "minimal") {
+    return { ts: false, framer: false, gsap: false, ui: "none", "state-mgmt": "none" };
   }
+  if (options.preset === "animation") {
+    return { framer: true, gsap: true };
+  }
+  if (options.preset === "full") {
+    return { ts: true, framer: true, gsap: true, ui: "shadcn", "state-mgmt": "redux" };
+  }
+  return {};
 }
 
 /* ---------------------------------
- * Interactive Prompts
+ * Prompt Missing Options
  * --------------------------------- */
 async function promptMissing(options) {
   if (!options.name) {
@@ -135,9 +81,7 @@ async function promptMissing(options) {
       type: "text",
       name: "name",
       message: "Project name",
-      validate: (v) => (v ? true : "Project name is required"),
     });
-
     if (!name) process.exit(1);
     options.name = name;
   }
@@ -153,24 +97,22 @@ async function promptMissing(options) {
         { title: "Vue 3 (Vite)", value: "vue" },
       ],
     });
-
     if (!framework) process.exit(1);
     options.framework = framework;
   }
 
-  const questions = [];
-
   if (options.ts === undefined) {
-    questions.push({
+    const { ts } = await prompts({
       type: "confirm",
       name: "ts",
       message: "Use TypeScript?",
       initial: true,
     });
+    options.ts = ts;
   }
 
   if (!options.tailwind) {
-    questions.push({
+    const { tailwind } = await prompts({
       type: "select",
       name: "tailwind",
       message: "Tailwind CSS version",
@@ -182,102 +124,56 @@ async function promptMissing(options) {
               { title: "v4 (experimental)", value: "v4" },
             ],
     });
+    options.tailwind = tailwind;
   }
 
   if (!options["state-mgmt"]) {
-    questions.push({
+    const { state } = await prompts({
       type: "select",
-      name: "state-mgmt",
+      name: "state",
       message: "State management",
       choices:
         options.framework === "vue"
-          ? [
-              { title: "Pinia (recommended)", value: "pinia" },
-              { title: "None", value: "none" },
-            ]
+          ? [{ title: "Pinia", value: "pinia" }]
           : [
+              { title: "Redux", value: "redux" },
               { title: "Zustand", value: "zustand" },
-              { title: "Redux Toolkit", value: "redux" },
-              { title: "RTK Query", value: "rtk-query" },
-              { title: "React Query", value: "react-query" },
-              { title: "SWR", value: "swr" },
-              { title: "Context API", value: "context" },
               { title: "None", value: "none" },
             ],
     });
-  }
-
-  if (!options.ui && options.framework !== "vue") {
-    questions.push({
-      type: "select",
-      name: "ui",
-      message: "UI library",
-      choices: [
-        { title: "None", value: "none" },
-        { title: "shadcn/ui", value: "shadcn" },
-      ],
-    });
-  }
-
-  if (options.framework !== "vue" && options.framer === undefined) {
-    questions.push({
-      type: "confirm",
-      name: "framer",
-      message: "Add Framer Motion?",
-      initial: false,
-    });
-  }
-
-  if (options.gsap === undefined) {
-    questions.push({
-      type: "confirm",
-      name: "gsap",
-      message: "Add GSAP animations?",
-      initial: false,
-    });
+    options["state-mgmt"] = state;
   }
 
   if (!options["no-start"]) {
-    questions.push({
+    const { start } = await prompts({
       type: "confirm",
       name: "start",
       message: "Start dev server after setup?",
       initial: true,
     });
-  }
-
-  if (questions.length) {
-    const answers = await prompts(questions, {
-      onCancel() {
-        process.exit(1);
-      },
-    });
-    Object.assign(options, answers);
+    options.start = start;
   }
 
   return options;
 }
 
 /* ---------------------------------
- * 🚨 Vue + Tailwind v4 Guard
+ * 🚨 Vue Guard (CRITICAL)
  * --------------------------------- */
-async function guardVueTailwind(options) {
-  if (options.framework === "vue" && options.tailwind === "v4") {
-    console.log("\n⚠️  Tailwind v4 is not supported for Vue yet.");
+async function guardVue(options, projectDir) {
+  if (options.framework !== "vue") return;
 
-    const { confirm } = await prompts({
-      type: "confirm",
-      name: "confirm",
-      message: "Switch to Tailwind v3 instead?",
-      initial: true,
-    });
+  // 🔒 Disable ALL auto-start logic
+  options.start = false;
+  options.__noViteStart = true;
 
-    if (!confirm) {
-      console.log("❌ Aborted. Vue currently supports Tailwind v3 only.");
-      process.exit(1);
-    }
+  // 🔒 Force non-interactive create-vite
+  process.env.CREATE_VITE_FORCE = "true";
+  process.env.NUXT_TELEMETRY_DISABLED = "1";
 
-    options.tailwind = "v3";
+  // 🔒 Prevent directory conflict prompt
+  if (fs.existsSync(projectDir)) {
+    emptyDir(projectDir);
   }
 }
 
@@ -299,19 +195,16 @@ async function main() {
     options.framework ??= "react";
     options.ts ??= true;
     options.tailwind ??= "v3";
-    options["state-mgmt"] ??=
-      options.framework === "vue" ? "pinia" : "none";
-    options.ui ??= "none";
-    options.framer ??= false;
-    options.gsap ??= false;
+    options["state-mgmt"] ??= "none";
     options.start = true;
   } else {
     options = await promptMissing(options);
   }
 
-  await guardVueTailwind(options);
-
   const projectDir = path.resolve(process.cwd(), options.name);
+
+  // 🚨 MUST run BEFORE scaffold
+  await guardVue(options, projectDir);
 
   console.log(
     `\n🚀 Creating ${options.framework.toUpperCase()} project: ${options.name}\n`
@@ -333,35 +226,26 @@ async function main() {
   }
 
   /* ---------------------------------
-   * 🔤 Font (during install)
+   * Fonts
    * --------------------------------- */
-  if (options.font) {
-    if (!registry[options.font]) {
-      console.error(`❌ Unknown font: ${options.font}`);
-      console.log("\nAvailable fonts:");
-      Object.keys(registry).forEach((f) => console.log(" -", f));
-      process.exit(1);
-    }
-
-    console.log(`🔤 Installing font: ${options.font}`);
+  if (options.font && registry[options.font]) {
     await addFont(projectDir, options.font);
   }
 
   /* ---------------------------------
-   * 📚 Docs
+   * Docs
    * --------------------------------- */
   if (!options["skip-docs"]) {
-    const docsSrc = path.join(__dirname, "../src/templates/docs");
-    const docsDest = path.join(projectDir, "docs");
-
-    console.log("📚 Adding documentation...");
-    copyDir(docsSrc, docsDest);
+    copyDir(
+      path.join(__dirname, "../src/templates/docs"),
+      path.join(projectDir, "docs")
+    );
   }
 
   /* ---------------------------------
-   * Auto start
+   * Auto start (NOT FOR VUE)
    * --------------------------------- */
-  if (options.start !== false) {
+  if (options.start !== false && options.framework !== "vue") {
     console.log("🔥 Starting dev server...");
     spawn("npm", ["run", "dev"], {
       stdio: "inherit",
