@@ -11,14 +11,14 @@ async function runVue(argv) {
   const projectDir = path.resolve(process.cwd(), projectName);
 
   /* -------------------------------------------------
-   * Create project directory (ONCE)
+   * Create project directory
    * ------------------------------------------------- */
   if (!fs.existsSync(projectDir)) {
     fs.mkdirSync(projectDir, { recursive: true });
   }
 
   /* -------------------------------------------------
-   * Init package.json (SAFE)
+   * Init package.json
    * ------------------------------------------------- */
   const pkgPath = path.join(projectDir, "package.json");
   if (!fs.existsSync(pkgPath)) {
@@ -26,28 +26,37 @@ async function runVue(argv) {
   }
 
   /* -------------------------------------------------
-   * -y / --yes defaults (NO PROMPTS)
+   * -y / --yes defaults
    * ------------------------------------------------- */
   if (argv.y || argv.yes) {
     argv.ts ??= true;
     argv.tailwind ??= "v3";
-
-    // Vue template defaults
     argv.animations = [];
     argv.gsap = false;
   }
 
   /* -------------------------------------------------
-   * Safety defaults (non -y runs)
+   * Safety defaults
    * ------------------------------------------------- */
   argv.ts ??= false;
   argv.tailwind ??= "v3";
 
   /* -------------------------------------------------
+   * Normalize options (KEY FIX)
+   * ------------------------------------------------- */
+  const vueOptions = {
+    ts: Boolean(argv.ts),
+    tailwind: argv.tailwind,
+    stateMgmt: argv["state-mgmt"] || argv.stateMgmt || null,
+    animations: argv.animations || [],
+    gsap: Boolean(argv.gsap),
+  };
+
+  /* -------------------------------------------------
    * Run scaffold
    * ------------------------------------------------- */
   console.log("🚀 Scaffolding Vue 3 + Vite project...");
-  await scaffoldVue(projectDir, argv);
+  await scaffoldVue(projectDir, vueOptions);
   console.log("✅ Vue scaffold complete.");
 
   return projectDir;

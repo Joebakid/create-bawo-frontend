@@ -3,17 +3,15 @@ const fs = require("fs");
 const path = require("path");
 const { write, ensure, run: exec } = require("../utils");
 
-async function scaffoldVue(projectDir, answers) {
+async function scaffoldVue({ projectDir, answers }) {
   const isTs = answers.ts;
   const name = answers.name;
   const cwd = path.dirname(projectDir);
   const tmpDir = path.join(cwd, `.__tmp_vue_${Date.now()}`);
 
-  console.log("🟢 Creating Vue project in temp directory");
+  console.log("🟢 Creating Vue project (isolated)");
 
-  /* -------------------------------------------------
-   * 1️⃣ Create Vite project (NON-INTERACTIVE)
-   * ------------------------------------------------- */
+  // 1️⃣ Create temp project
   await exec(
     "npx",
     [
@@ -26,9 +24,7 @@ async function scaffoldVue(projectDir, answers) {
     cwd
   );
 
-  /* -------------------------------------------------
-   * 2️⃣ Install dependencies
-   * ------------------------------------------------- */
+  // 2️⃣ Install deps
   await exec("npm", ["install"], tmpDir);
   await exec("npm", ["install", "vue-router@latest", "pinia@latest"], tmpDir);
   await exec(
@@ -37,60 +33,39 @@ async function scaffoldVue(projectDir, answers) {
     tmpDir
   );
 
-  /* -------------------------------------------------
-   * 3️⃣ Nuke default Vite UI
-   * ------------------------------------------------- */
+  // 3️⃣ Remove Vite UI
   fs.rmSync(path.join(tmpDir, "src/components"), { recursive: true, force: true });
   fs.rmSync(path.join(tmpDir, "src/assets"), { recursive: true, force: true });
 
-  /* -------------------------------------------------
-   * 4️⃣ Tailwind core files
-   * ------------------------------------------------- */
-
-  // tailwind.config.js
+  // 4️⃣ Tailwind
   write(
     path.join(tmpDir, "tailwind.config.js"),
     `
-/** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{vue,js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
+  content: ["./index.html", "./src/**/*.{vue,js,ts}"],
+  theme: { extend: {} },
   plugins: [],
 };
 `.trim()
   );
 
-  // postcss.config.js
   write(
     path.join(tmpDir, "postcss.config.js"),
     `
 export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
+  plugins: { tailwindcss: {}, autoprefixer: {} },
 };
 `.trim()
   );
 
-  // Tailwind entry CSS
   write(
     path.join(tmpDir, "src/style.css"),
-    `
-@tailwind base;
+    `@tailwind base;
 @tailwind components;
-@tailwind utilities;
-`.trim()
+@tailwind utilities;`
   );
 
-  /* -------------------------------------------------
-   * 5️⃣ Router
-   * ------------------------------------------------- */
+  // 5️⃣ Router
   ensure(path.join(tmpDir, "src/router"));
   write(
     path.join(tmpDir, `src/router/index.${isTs ? "ts" : "js"}`),
@@ -105,9 +80,7 @@ export const router = createRouter({
 `.trim()
   );
 
-  /* -------------------------------------------------
-   * 6️⃣ View (YOUR TEMPLATE)
-   * ------------------------------------------------- */
+  // 6️⃣ View
   ensure(path.join(tmpDir, "src/views"));
   write(
     path.join(tmpDir, "src/views/Home.vue"),
@@ -115,24 +88,11 @@ export const router = createRouter({
 <template>
   <main class="min-h-screen flex items-center justify-center bg-slate-100">
     <div class="max-w-xl w-full px-6">
-      <div class="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-6">
-        <h1 class="text-4xl font-semibold tracking-tight text-slate-900">
-          create-bawo-frontend
-        </h1>
-
-        <p class="text-slate-600 text-lg">
-          A modern frontend scaffolding framework for React, Next.js, and Vue.
+      <div class="bg-white border rounded-2xl p-8 text-center space-y-6">
+        <h1 class="text-4xl font-semibold">create-bawo-frontend</h1>
+        <p class="text-slate-600">
+          A modern frontend scaffolding framework.
         </p>
-
-        <div class="flex justify-center gap-3">
-          <a
-            href="https://create-bawo-frontend.vercel.app/docs"
-            target="_blank"
-            class="rounded-md bg-slate-900 px-5 py-3 text-sm text-white hover:bg-slate-800"
-          >
-            View Documentation →
-          </a>
-        </div>
       </div>
     </div>
   </main>
@@ -140,13 +100,8 @@ export const router = createRouter({
 `.trim()
   );
 
-  /* -------------------------------------------------
-   * 7️⃣ App + main
-   * ------------------------------------------------- */
-  write(
-    path.join(tmpDir, "src/App.vue"),
-    `<template><RouterView /></template>`
-  );
+  // 7️⃣ App + main
+  write(path.join(tmpDir, "src/App.vue"), `<template><RouterView /></template>`);
 
   write(
     path.join(tmpDir, `src/main.${isTs ? "ts" : "js"}`),
@@ -157,28 +112,19 @@ import { router } from "./router";
 import App from "./App.vue";
 import "./style.css";
 
-createApp(App)
-  .use(createPinia())
-  .use(router)
-  .mount("#app");
+createApp(App).use(createPinia()).use(router).mount("#app");
 `.trim()
   );
 
-  /* -------------------------------------------------
-   * 8️⃣ Move temp → final
-   * ------------------------------------------------- */
-  if (fs.existsSync(projectDir)) {
-    fs.rmSync(projectDir, { recursive: true, force: true });
-  }
-
+  // 8️⃣ FINAL MOVE (Vue owns projectDir)
+  fs.rmSync(projectDir, { recursive: true, force: true });
   fs.renameSync(tmpDir, projectDir);
 
   console.log(`
-✅ Vue project ready
+✅ Vue project created successfully
 
-Next steps:
-  cd ${name}
-  npm run dev
+cd ${name}
+npm run dev
 `);
 }
 
