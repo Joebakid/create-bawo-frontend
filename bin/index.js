@@ -6,7 +6,6 @@ const fs = require("fs");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const prompts = require("prompts");
-const { spawn } = require("child_process");
 
 // 🔤 Font system
 const { addFont, registry } = require("../src/fonts");
@@ -21,18 +20,13 @@ function copyDir(src, dest) {
   for (const entry of fs.readdirSync(src)) {
     const srcPath = path.join(src, entry);
     const destPath = path.join(dest, entry);
+
     if (fs.statSync(srcPath).isDirectory()) {
       copyDir(srcPath, destPath);
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
   }
-}
-
-function emptyDir(dir) {
-  if (!fs.existsSync(dir)) return;
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(dir, { recursive: true });
 }
 
 /* ---------------------------------
@@ -50,7 +44,6 @@ const argv = yargs(hideBin(process.argv))
   .option("gsap", { type: "boolean" })
   .option("font", { type: "string" })
   .option("preset", { type: "string" })
-  .option("no-start", { type: "boolean" })
   .option("skip-docs", { type: "boolean" })
   .option("yes", { alias: "y", type: "boolean" })
   .help()
@@ -60,16 +53,28 @@ const argv = yargs(hideBin(process.argv))
  * Presets
  * --------------------------------- */
 function applyPreset(options) {
-  if (options.preset === "minimal") {
-    return { ts: false, framer: false, gsap: false, ui: "none", "state-mgmt": "none" };
+  switch (options.preset) {
+    case "minimal":
+      return {
+        ts: false,
+        framer: false,
+        gsap: false,
+        ui: "none",
+        "state-mgmt": "none",
+      };
+    case "animation":
+      return { framer: true, gsap: true };
+    case "full":
+      return {
+        ts: true,
+        framer: true,
+        gsap: true,
+        ui: "shadcn",
+        "state-mgmt": "redux",
+      };
+    default:
+      return {};
   }
-  if (options.preset === "animation") {
-    return { framer: true, gsap: true };
-  }
-  if (options.preset === "full") {
-    return { ts: true, framer: true, gsap: true, ui: "shadcn", "state-mgmt": "redux" };
-  }
-  return {};
 }
 
 /* ---------------------------------
@@ -97,7 +102,6 @@ async function promptMissing(options) {
         { title: "Vue 3 (Vite)", value: "vue" },
       ],
     });
-    if (!framework) process.exit(1);
     options.framework = framework;
   }
 
@@ -144,37 +148,7 @@ async function promptMissing(options) {
     options["state-mgmt"] = state;
   }
 
-  if (!options["no-start"]) {
-    const { start } = await prompts({
-      type: "confirm",
-      name: "start",
-      message: "Start dev server after setup?",
-      initial: true,
-    });
-    options.start = start;
-  }
-
   return options;
-}
-
-/* ---------------------------------
- * 🚨 Vue Guard (CRITICAL)
- * --------------------------------- */
-async function guardVue(options, projectDir) {
-  if (options.framework !== "vue") return;
-
-  // 🔒 Disable ALL auto-start logic
-  options.start = false;
-  options.__noViteStart = true;
-
-  // 🔒 Force non-interactive create-vite
-  process.env.CREATE_VITE_FORCE = "true";
-  process.env.NUXT_TELEMETRY_DISABLED = "1";
-
-  // 🔒 Prevent directory conflict prompt
-  if (fs.existsSync(projectDir)) {
-    emptyDir(projectDir);
-  }
 }
 
 /* ---------------------------------
@@ -196,15 +170,11 @@ async function main() {
     options.ts ??= true;
     options.tailwind ??= "v3";
     options["state-mgmt"] ??= "none";
-    options.start = true;
   } else {
     options = await promptMissing(options);
   }
 
   const projectDir = path.resolve(process.cwd(), options.name);
-
-  // 🚨 MUST run BEFORE scaffold
-  await guardVue(options, projectDir);
 
   console.log(
     `\n🚀 Creating ${options.framework.toUpperCase()} project: ${options.name}\n`
@@ -218,7 +188,10 @@ async function main() {
       await require("../src/next").run(options);
       break;
     case "vue":
-      await require("../src/vue").run(options);
+      await require("../src/vue").run({
+        projectDir,
+        answers: options,
+      });
       break;
     default:
       console.error("❌ Unsupported framework");
@@ -242,16 +215,9 @@ async function main() {
     );
   }
 
-  /* ---------------------------------
-   * Auto start (NOT FOR VUE)
-   * --------------------------------- */
-  if (options.start !== false && options.framework !== "vue") {
-    console.log("🔥 Starting dev server...");
-    spawn("npm", ["run", "dev"], {
-      stdio: "inherit",
-      cwd: projectDir,
-    });
-  }
+  console.log("\n✅ Project ready!");
+  console.log("👉 cd", options.name);
+  console.log("👉 npm run dev\n");
 }
 
 main().catch((err) => {
