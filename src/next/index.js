@@ -39,7 +39,7 @@ async function runNext(argv) {
   }
 
   /* -------------------------------------------------
-   * Safety defaults
+   * Safety defaults (only if still undefined)
    * ------------------------------------------------- */
   argv.ts ??= false;
   argv.tailwind ??= "v3";
@@ -51,6 +51,8 @@ async function runNext(argv) {
   console.log("🚀 Scaffolding Next.js project...");
   await scaffoldNext(projectDir, argv);
   console.log("✅ Next.js scaffold complete.");
+
+  return projectDir;
 }
 
 module.exports = { run: runNext };

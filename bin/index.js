@@ -2,10 +2,32 @@
 /* eslint-disable no-console */
 
 const path = require("path");
+const fs = require("fs");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const prompts = require("prompts");
-const { spawn } = require("child_process");
+
+// 🔤 Font system
+const { addFont, registry } = require("../src/fonts");
+
+/* ---------------------------------
+ * Helpers
+ * --------------------------------- */
+function copyDir(src, dest) {
+  if (!fs.existsSync(src)) return;
+  fs.mkdirSync(dest, { recursive: true });
+
+  for (const entry of fs.readdirSync(src)) {
+    const srcPath = path.join(src, entry);
+    const destPath = path.join(dest, entry);
+
+    if (fs.statSync(srcPath).isDirectory()) {
+      copyDir(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 /* ---------------------------------
  * CLI FLAGS
@@ -17,10 +39,12 @@ const argv = yargs(hideBin(process.argv))
   .option("ts", { type: "boolean" })
   .option("tailwind", { type: "string" })
   .option("state-mgmt", { type: "string" })
+  .option("ui", { type: "string" })
   .option("framer", { type: "boolean" })
   .option("gsap", { type: "boolean" })
+  .option("font", { type: "string" })
   .option("preset", { type: "string" })
-  .option("no-start", { type: "boolean" })
+  .option("skip-docs", { type: "boolean" })
   .option("yes", { alias: "y", type: "boolean" })
   .help()
   .parse();
@@ -31,38 +55,42 @@ const argv = yargs(hideBin(process.argv))
 function applyPreset(options) {
   switch (options.preset) {
     case "minimal":
-      return { ts: false, framer: false, gsap: false, "state-mgmt": "none" };
+      return {
+        ts: false,
+        framer: false,
+        gsap: false,
+        ui: "none",
+        "state-mgmt": "none",
+      };
     case "animation":
       return { framer: true, gsap: true };
     case "full":
-      return { ts: true, framer: true, gsap: true, "state-mgmt": "redux" };
+      return {
+        ts: true,
+        framer: true,
+        gsap: true,
+        ui: "shadcn",
+        "state-mgmt": "redux",
+      };
     default:
       return {};
   }
 }
 
 /* ---------------------------------
- * Interactive Prompts
+ * Prompt Missing Options
  * --------------------------------- */
 async function promptMissing(options) {
-  /* -------- Project name (ONLY if missing) -------- */
   if (!options.name) {
     const { name } = await prompts({
       type: "text",
       name: "name",
       message: "Project name",
-      validate: (v) => (v ? true : "Project name is required"),
     });
-
-    if (!name) {
-      console.log("❌ Cancelled");
-      process.exit(1);
-    }
-
+    if (!name) process.exit(1);
     options.name = name;
   }
 
-  /* -------- Framework -------- */
   if (!options.framework) {
     const { framework } = await prompts({
       type: "select",
@@ -74,28 +102,21 @@ async function promptMissing(options) {
         { title: "Vue 3 (Vite)", value: "vue" },
       ],
     });
-
-    if (!framework) {
-      console.log("❌ Cancelled");
-      process.exit(1);
-    }
-
     options.framework = framework;
   }
 
-  const questions = [];
-
   if (options.ts === undefined) {
-    questions.push({
+    const { ts } = await prompts({
       type: "confirm",
       name: "ts",
       message: "Use TypeScript?",
       initial: true,
     });
+    options.ts = ts;
   }
 
   if (!options.tailwind) {
-    questions.push({
+    const { tailwind } = await prompts({
       type: "select",
       name: "tailwind",
       message: "Tailwind CSS version",
@@ -107,73 +128,24 @@ async function promptMissing(options) {
               { title: "v4 (experimental)", value: "v4" },
             ],
     });
+    options.tailwind = tailwind;
   }
 
   if (!options["state-mgmt"]) {
-    if (options.framework === "vue") {
-      questions.push({
-        type: "select",
-        name: "state-mgmt",
-        message: "State management",
-        choices: [
-          { title: "Pinia (recommended)", value: "pinia" },
-          { title: "None", value: "none" },
-        ],
-      });
-    } else {
-      questions.push({
-        type: "select",
-        name: "state-mgmt",
-        message: "State management",
-        choices: [
-          { title: "Zustand", value: "zustand" },
-          { title: "Redux Toolkit", value: "redux" },
-          { title: "RTK Query", value: "rtk-query" },
-          { title: "React Query", value: "react-query" },
-          { title: "SWR", value: "swr" },
-          { title: "Context API", value: "context" },
-          { title: "None", value: "none" },
-        ],
-      });
-    }
-  }
-
-  if (options.framework !== "vue" && options.framer === undefined) {
-    questions.push({
-      type: "confirm",
-      name: "framer",
-      message: "Add Framer Motion?",
-      initial: false,
+    const { state } = await prompts({
+      type: "select",
+      name: "state",
+      message: "State management",
+      choices:
+        options.framework === "vue"
+          ? [{ title: "Pinia", value: "pinia" }]
+          : [
+              { title: "Redux", value: "redux" },
+              { title: "Zustand", value: "zustand" },
+              { title: "None", value: "none" },
+            ],
     });
-  }
-
-  if (options.gsap === undefined) {
-    questions.push({
-      type: "confirm",
-      name: "gsap",
-      message: "Add GSAP animations?",
-      initial: false,
-    });
-  }
-
-  if (!options["no-start"]) {
-    questions.push({
-      type: "confirm",
-      name: "start",
-      message: "Start dev server after setup?",
-      initial: true,
-    });
-  }
-
-  if (questions.length) {
-    const answers = await prompts(questions, {
-      onCancel() {
-        console.log("❌ Cancelled");
-        process.exit(1);
-      },
-    });
-
-    Object.assign(options, answers);
+    options["state-mgmt"] = state;
   }
 
   return options;
@@ -185,54 +157,67 @@ async function promptMissing(options) {
 async function main() {
   let options = {
     ...argv,
-    name: argv._[0], // ✅ SINGLE source of truth
+    name: argv._[0],
   };
 
   if (options.preset) {
     Object.assign(options, applyPreset(options));
   }
 
-  /* -------- Quick mode (-y) -------- */
   if (options.y || options.yes) {
     options.name ??= "my-app";
     options.framework ??= "react";
     options.ts ??= true;
     options.tailwind ??= "v3";
-    options["state-mgmt"] ??=
-      options.framework === "vue" ? "pinia" : "none";
-    options.framer ??= false;
-    options.gsap ??= false;
-    options.start = true;
+    options["state-mgmt"] ??= "none";
   } else {
     options = await promptMissing(options);
   }
 
-  /* -------- Route -------- */
-  let projectDir;
+  const projectDir = path.resolve(process.cwd(), options.name);
+
+  console.log(
+    `\n🚀 Creating ${options.framework.toUpperCase()} project: ${options.name}\n`
+  );
 
   switch (options.framework) {
     case "react":
-      projectDir = await require("../src/react").run(options);
+      await require("../src/react").run(options);
       break;
     case "next":
-      projectDir = await require("../src/next").run(options);
+      await require("../src/next").run(options);
       break;
     case "vue":
-      projectDir = await require("../src/vue").run(options);
+      await require("../src/vue").run({
+        projectDir,
+        answers: options,
+      });
       break;
     default:
       console.error("❌ Unsupported framework");
       process.exit(1);
   }
 
-  /* -------- Auto start -------- */
-  if (options.start !== false && projectDir) {
-    console.log("🔥 Starting dev server...");
-    spawn("npm", ["run", "dev"], {
-      stdio: "inherit",
-      cwd: path.resolve(projectDir),
-    });
+  /* ---------------------------------
+   * Fonts
+   * --------------------------------- */
+  if (options.font && registry[options.font]) {
+    await addFont(projectDir, options.font);
   }
+
+  /* ---------------------------------
+   * Docs
+   * --------------------------------- */
+  if (!options["skip-docs"]) {
+    copyDir(
+      path.join(__dirname, "../src/templates/docs"),
+      path.join(projectDir, "docs")
+    );
+  }
+
+  console.log("\n✅ Project ready!");
+  console.log("👉 cd", options.name);
+  console.log("👉 npm run dev\n");
 }
 
 main().catch((err) => {
