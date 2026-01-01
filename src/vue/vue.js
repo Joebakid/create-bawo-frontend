@@ -46,13 +46,33 @@ async function scaffoldVue(options, projectDir) {
   }
 
   /* -------------------------------------------------
-   * 3️⃣ Install dependencies
+   * 3️⃣ GSAP (Vue – optional)
+   * ------------------------------------------------- */
+  if (options.gsap) {
+    console.log("🎞️ Adding GSAP to Vue project...");
+
+    // Install GSAP
+    await run("npm", ["install", "gsap"], projectDir);
+
+    // Copy GSAP helpers from framework repo
+    const gsapSrc = path.join(__dirname, "../animations/gsap");
+    const gsapDest = path.join(projectDir, "src/animations/gsap");
+
+    if (fs.existsSync(gsapSrc)) {
+      copyDir(gsapSrc, gsapDest);
+    } else {
+      console.warn("⚠️ GSAP helpers not found, skipping copy");
+    }
+  }
+
+  /* -------------------------------------------------
+   * 4️⃣ Install remaining dependencies
    * ------------------------------------------------- */
   console.log("📦 Installing dependencies...");
   await run("npm", ["install"], projectDir);
 
   /* -------------------------------------------------
-   * 4️⃣ Done
+   * 5️⃣ Done
    * ------------------------------------------------- */
   console.log(`
 ✅ Vue project ready

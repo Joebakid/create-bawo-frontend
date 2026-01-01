@@ -11,6 +11,18 @@ const prompts = require("prompts");
 const { addFont, registry } = require("../src/fonts");
 
 /* ---------------------------------
+ * State Managers (React only)
+ * --------------------------------- */
+const STATE_MANAGERS = {
+  redux: "redux",
+  "rtk-query": "rtk-query",
+  "react-query": "react-query",
+  swr: "swr",
+  zustand: "zustand",
+  context: "context",
+};
+
+/* ---------------------------------
  * Helpers
  * --------------------------------- */
 function copyDir(src, dest) {
@@ -131,19 +143,20 @@ async function promptMissing(options) {
     options.tailwind = tailwind;
   }
 
-  if (!options["state-mgmt"]) {
+  if (!options["state-mgmt"] && options.framework !== "vue") {
     const { state } = await prompts({
       type: "select",
       name: "state",
       message: "State management",
-      choices:
-        options.framework === "vue"
-          ? [{ title: "Pinia", value: "pinia" }]
-          : [
-              { title: "Redux", value: "redux" },
-              { title: "Zustand", value: "zustand" },
-              { title: "None", value: "none" },
-            ],
+      choices: [
+        { title: "Redux", value: "redux" },
+        { title: "RTK Query", value: "rtk-query" },
+        { title: "React Query", value: "react-query" },
+        { title: "SWR", value: "swr" },
+        { title: "Zustand", value: "zustand" },
+        { title: "Context API", value: "context" },
+        { title: "None", value: "none" },
+      ],
     });
     options["state-mgmt"] = state;
   }
@@ -180,6 +193,9 @@ async function main() {
     `\n🚀 Creating ${options.framework.toUpperCase()} project: ${options.name}\n`
   );
 
+  /* ---------------------------------
+   * Scaffold Framework
+   * --------------------------------- */
   switch (options.framework) {
     case "react":
       await require("../src/react").run(options);
@@ -196,6 +212,96 @@ async function main() {
     default:
       console.error("❌ Unsupported framework");
       process.exit(1);
+  }
+
+  /* ---------------------------------
+   * State Management (React / Next ONLY)
+   * --------------------------------- */
+  const state = options["state-mgmt"];
+
+  if (
+    state &&
+    state !== "none" &&
+    options.framework !== "vue"
+  ) {
+    const stateSrc = path.join(
+      __dirname,
+      `../src/state/${STATE_MANAGERS[state]}`
+    );
+
+    const stateDest = path.join(projectDir, "src/state");
+
+    copyDir(stateSrc, stateDest);
+
+    const providerMap = {
+      redux: "ReduxProvider",
+      "rtk-query": "RTKQueryProvider",
+      "react-query": "ReactQueryProvider",
+      swr: "SWRProvider",
+      zustand: null,
+      context: "AppProvider",
+    };
+
+    const providerName = providerMap[state];
+
+    const providerContent = providerName
+      ? `
+import ${providerName} from "./${STATE_MANAGERS[state]}/provider";
+
+export default function StateProvider({ children }) {
+  return <${providerName}>{children}</${providerName}>;
+}
+`
+      : `
+export default function StateProvider({ children }) {
+  return <>{children}</>;
+}
+`;
+
+    fs.writeFileSync(
+      path.join(projectDir, "src/state/provider.jsx"),
+      providerContent.trim()
+    );
+  }
+
+  /* ---------------------------------
+   * Animations (GSAP / Framer)
+   * --------------------------------- */
+  if (options.gsap || options.framer) {
+    const animationsDest = path.join(projectDir, "src/animations");
+
+    // GSAP (React, Next, Vue)
+    if (options.gsap) {
+      copyDir(
+        path.join(__dirname, "../src/animations/gsap"),
+        path.join(animationsDest, "gsap")
+      );
+    }
+
+    // Framer Motion (React / Next ONLY)
+    if (options.framer && options.framework !== "vue") {
+      copyDir(
+        path.join(__dirname, "../src/animations/framer"),
+        path.join(animationsDest, "framer")
+      );
+
+      const animationProvider = `
+import { MotionConfig } from "framer-motion";
+
+export default function AnimationProvider({ children }) {
+  return (
+    <MotionConfig reducedMotion="user">
+      {children}
+    </MotionConfig>
+  );
+}
+`.trim();
+
+      fs.writeFileSync(
+        path.join(animationsDest, "provider.jsx"),
+        animationProvider
+      );
+    }
   }
 
   /* ---------------------------------
