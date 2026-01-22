@@ -8,7 +8,57 @@ const { hideBin } = require("yargs/helpers");
 const prompts = require("prompts");
 
 // 🔤 Font system
-const { addFont, registry } = require("../src/fonts");
+const { addFont } = require("../src/fonts");
+
+
+//helper for font pagination
+async function pickFontPaginated(fontKeys, pageSize = 5) {
+  let page = 0;
+
+  while (true) {
+    const start = page * pageSize;
+    const end = start + pageSize;
+    const slice = fontKeys.slice(start, end);
+
+    const choices = slice.map((key) => ({
+      title: key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^./, (c) => c.toUpperCase()),
+      value: key,
+    }));
+
+    if (end < fontKeys.length) {
+      choices.push({ title: "More…", value: "__more" });
+    }
+
+    if (page > 0) {
+      choices.push({ title: "Back", value: "__back" });
+    }
+
+    choices.push({ title: "System default", value: null });
+
+    const { font } = await prompts({
+      type: "select",
+      name: "font",
+      message: "Choose a font",
+      choices,
+    });
+
+    if (font === "__more") {
+      page++;
+      continue;
+    }
+
+    if (font === "__back") {
+      page--;
+      continue;
+    }
+
+    return font;
+  }
+}
+
+
 
 /* ---------------------------------
  * State Managers (React only)
@@ -143,6 +193,16 @@ async function promptMissing(options) {
     options.tailwind = tailwind;
   }
 
+  /* ---------------------------------
+   * Fonts (PAGINATED)
+   * --------------------------------- */
+  if (!options.font) {
+    const registry = require("../src/fonts/registry");
+    const fontKeys = Object.keys(registry);
+
+    options.font = await pickFontPaginated(fontKeys, 5);
+  }
+
   if (!options["state-mgmt"] && options.framework !== "vue") {
     const { state } = await prompts({
       type: "select",
@@ -164,6 +224,8 @@ async function promptMissing(options) {
   return options;
 }
 
+
+
 /* ---------------------------------
  * Main
  * --------------------------------- */
@@ -173,17 +235,26 @@ async function main() {
     name: argv._[0],
   };
 
+  /* ---------------------------------
+   * Apply preset (if any)
+   * --------------------------------- */
   if (options.preset) {
     Object.assign(options, applyPreset(options));
   }
 
+  /* ---------------------------------
+   * Resolve options
+   * --------------------------------- */
   if (options.y || options.yes) {
+    // YES MODE (no prompts)
     options.name ??= "my-app";
     options.framework ??= "react";
     options.ts ??= true;
     options.tailwind ??= "v3";
     options["state-mgmt"] ??= "none";
+    options.font ??= "inter"; // ✅ DEFAULT FONT
   } else {
+    // INTERACTIVE MODE
     options = await promptMissing(options);
   }
 
@@ -194,7 +265,7 @@ async function main() {
   );
 
   /* ---------------------------------
-   * Scaffold Framework
+   * Scaffold framework
    * --------------------------------- */
   switch (options.framework) {
     case "react":
@@ -214,55 +285,100 @@ async function main() {
       process.exit(1);
   }
 
-  /* ---------------------------------
-   * State Management (React / Next ONLY)
-   * --------------------------------- */
-  const state = options["state-mgmt"];
+ /* ---------------------------------
+ * State Management (React / Next ONLY)
+ * --------------------------------- */
+const state = options["state-mgmt"];
 
-  if (
-    state &&
-    state !== "none" &&
-    options.framework !== "vue"
-  ) {
-    const stateSrc = path.join(
-      __dirname,
-      `../src/state/${STATE_MANAGERS[state]}`
-    );
+if (state && state !== "none" && options.framework !== "vue") {
+  const isNext = options.framework === "next";
 
-    const stateDest = path.join(projectDir, "src/state");
+  /* -------------------------------
+   * Copy state helpers
+   * ------------------------------- */
+  const stateSrc = path.join(
+    __dirname,
+    `../src/state/${STATE_MANAGERS[state]}`
+  );
 
-    copyDir(stateSrc, stateDest);
+  const stateDest = isNext
+    ? path.join(projectDir, "app/state")
+    : path.join(projectDir, "src/state");
 
-    const providerMap = {
-      redux: "ReduxProvider",
-      "rtk-query": "RTKQueryProvider",
-      "react-query": "ReactQueryProvider",
-      swr: "SWRProvider",
-      zustand: null,
-      context: "AppProvider",
-    };
+  copyDir(stateSrc, stateDest);
 
-    const providerName = providerMap[state];
+  /* -------------------------------
+   * Provider mapping
+   * ------------------------------- */
+  const providerMap = {
+    redux: "ReduxProvider",
+    "rtk-query": "RTKQueryProvider",
+    "react-query": "ReactQueryProvider",
+    swr: "SWRProvider",
+    zustand: null,
+    context: "AppProvider",
+  };
 
-    const providerContent = providerName
-      ? `
+  const providerName = providerMap[state];
+
+  /* -------------------------------
+   * Provider file content
+   * ------------------------------- */
+  const providerContent = providerName
+    ? `
+"use client";
+
 import ${providerName} from "./${STATE_MANAGERS[state]}/provider";
 
-export default function StateProvider({ children }) {
+export default function Providers({ children }) {
   return <${providerName}>{children}</${providerName}>;
 }
 `
-      : `
-export default function StateProvider({ children }) {
+    : `
+"use client";
+
+export default function Providers({ children }) {
   return <>{children}</>;
 }
 `;
 
-    fs.writeFileSync(
-      path.join(projectDir, "src/state/provider.jsx"),
-      providerContent.trim()
-    );
+  /* -------------------------------
+   * Write provider to correct path
+   * ------------------------------- */
+  const providerPath = isNext
+    ? path.join(projectDir, "app/providers.jsx")
+    : path.join(projectDir, "src/state/provider.jsx");
+
+  fs.mkdirSync(path.dirname(providerPath), { recursive: true });
+  fs.writeFileSync(providerPath, providerContent.trim());
+
+  /* -------------------------------
+   * Inject into Next.js layout
+   * ------------------------------- */
+  if (isNext) {
+    const layoutPath = path.join(projectDir, "app/layout.tsx");
+    if (fs.existsSync(layoutPath)) {
+      let layout = fs.readFileSync(layoutPath, "utf8");
+
+      if (!layout.includes("Providers")) {
+        layout = layout
+          .replace(
+            "export default function RootLayout({ children }) {",
+            `import Providers from "./providers";
+
+export default function RootLayout({ children }) {`
+          )
+          .replace(
+            "{children}",
+            "<Providers>{children}</Providers>"
+          );
+
+        fs.writeFileSync(layoutPath, layout);
+      }
+    }
   }
+}
+
 
   /* ---------------------------------
    * Animations (GSAP / Framer)
@@ -270,7 +386,7 @@ export default function StateProvider({ children }) {
   if (options.gsap || options.framer) {
     const animationsDest = path.join(projectDir, "src/animations");
 
-    // GSAP (React, Next, Vue)
+    // GSAP
     if (options.gsap) {
       copyDir(
         path.join(__dirname, "../src/animations/gsap"),
@@ -278,7 +394,7 @@ export default function StateProvider({ children }) {
       );
     }
 
-    // Framer Motion (React / Next ONLY)
+    // Framer Motion (React / Next only)
     if (options.framer && options.framework !== "vue") {
       copyDir(
         path.join(__dirname, "../src/animations/framer"),
@@ -307,9 +423,9 @@ export default function AnimationProvider({ children }) {
   /* ---------------------------------
    * Fonts
    * --------------------------------- */
-  if (options.font && registry[options.font]) {
-    await addFont(projectDir, options.font);
-  }
+ if (options.font) {
+  await addFont(projectDir, options.font);
+}
 
   /* ---------------------------------
    * Docs
@@ -321,6 +437,9 @@ export default function AnimationProvider({ children }) {
     );
   }
 
+  /* ---------------------------------
+   * Done
+   * --------------------------------- */
   console.log("\n✅ Project ready!");
   console.log("👉 cd", options.name);
   console.log("👉 npm run dev\n");

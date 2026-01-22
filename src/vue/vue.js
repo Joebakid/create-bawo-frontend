@@ -2,6 +2,8 @@
 const fs = require("fs");
 const path = require("path");
 const { ensure, run } = require("../utils");
+const { installFont } = require("../fonts");
+
 
 /**
  * Vue scaffold using INTERNAL TEMPLATE (no create-vite)
@@ -43,6 +45,15 @@ async function scaffoldVue(options, projectDir) {
     if (fs.existsSync(viteTs)) {
       fs.renameSync(viteTs, viteJs);
     }
+  }
+
+
+   /* -------------------------------------------------
+   * 2.5️⃣ Fonts (Vue)
+   * ------------------------------------------------- */
+  if (options.font) {
+    console.log(`🎨 Installing font: ${options.font}`);
+    installFont(options.font, projectDir, "vue");
   }
 
   /* -------------------------------------------------

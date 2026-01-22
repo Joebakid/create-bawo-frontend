@@ -1,44 +1,67 @@
-// src/fonts/installer.js
 const fs = require("fs");
 const path = require("path");
-const https = require("https");
 const registry = require("./registry");
+const { ensure } = require("../utils");
 
-function download(url, dest) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      res.pipe(fs.createWriteStream(dest));
-      res.on("end", resolve);
-      res.on("error", reject);
-    });
-  });
-}
-
-async function installFont(projectDir, fontKey) {
+async function addFont(projectDir, fontKey) {
   const font = registry[fontKey];
-  if (!font) throw new Error("Font not found");
 
-  const baseDir = path.join(projectDir, "src/fonts", fontKey);
-  fs.mkdirSync(baseDir, { recursive: true });
+  if (!font) {
+    console.warn(`⚠️ Unknown font "${fontKey}", skipping font install`);
+    return;
+  }
 
-  const cssUrl = `https://fonts.googleapis.com/css2?family=${font.family.replace(
-    / /g,
-    "+"
-  )}:wght@${font.weights.join(";")}`;
+  // Detect framework by folder structure
+  const isNext = fs.existsSync(path.join(projectDir, "app"));
 
-  https.get(cssUrl, (res) => {
-    let css = "";
-    res.on("data", (d) => (css += d));
-    res.on("end", async () => {
-      const urls = css.match(/https:\/\/[^)]+\.woff2/g) || [];
+  // ✅ Correct styles directory per framework
+  const stylesDir = isNext
+    ? path.join(projectDir, "app/styles")
+    : path.join(projectDir, "src/styles");
 
-      for (const url of urls) {
-        const fileName = path.basename(url.split("?")[0]);
-        const dest = path.join(baseDir, fileName);
-        await download(url, dest);
-      }
-    });
-  });
+  ensure(stylesDir);
+
+  const cssPath = path.join(stylesDir, "fonts.css");
+
+  const css = `
+@import url("${font.url}");
+
+:root {
+  --font-sans: "${font.family}", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-module.exports = { installFont };
+body {
+  font-family: var(--font-sans);
+}
+`;
+
+  fs.writeFileSync(cssPath, css.trim() + "\n");
+
+  injectFontImport(projectDir, isNext);
+}
+
+function injectFontImport(projectDir, isNext) {
+  const importLine = `import "./styles/fonts.css";\n`;
+
+  const targets = isNext
+    ? ["app/layout.tsx", "app/layout.jsx"]
+    : [
+        "src/main.tsx",
+        "src/main.jsx",
+        "src/main.ts",
+        "src/main.js",
+      ];
+
+  for (const file of targets) {
+    const fullPath = path.join(projectDir, file);
+    if (!fs.existsSync(fullPath)) continue;
+
+    const content = fs.readFileSync(fullPath, "utf8");
+    if (content.includes("fonts.css")) return;
+
+    fs.writeFileSync(fullPath, importLine + content);
+    return;
+  }
+}
+
+module.exports = { addFont };
