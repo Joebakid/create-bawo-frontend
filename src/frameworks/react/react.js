@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const { write, ensure, read, run } = require("../../utils");
+const { write, ensure, read } = require("../../utils");
 
 const { setupShadcn } = require("../../setup/shadcn");
 const { injectTailwind } = require("../../tailwind/inject");
@@ -36,13 +36,49 @@ function formatSize(bytes) {
 }
 
 /* -------------------------------------------------
+Dependency parser
+------------------------------------------------- */
+
+function buildDepObject(list) {
+
+  const obj = {};
+
+  for (const dep of list) {
+
+    if (dep.startsWith("@")) {
+
+      const parts = dep.split("@");
+
+      if (parts.length === 3) {
+        obj[`@${parts[1]}`] = parts[2];
+      } else {
+        obj[dep] = "latest";
+      }
+
+    } else if (dep.includes("@")) {
+
+      const [name, version] = dep.split("@");
+      obj[name] = version;
+
+    } else {
+
+      obj[dep] = "latest";
+
+    }
+
+  }
+
+  return obj;
+
+}
+
+/* -------------------------------------------------
 React + Vite Scaffold
 ------------------------------------------------- */
 
 async function scaffoldReact(projectDir, options) {
 
   const state = options["state-mgmt"] || "none";
-
   const ext = options.ts ? "tsx" : "jsx";
 
   const useFramer = !!options.framer;
@@ -55,9 +91,9 @@ async function scaffoldReact(projectDir, options) {
   ------------------------------------------------- */
 
   ensure(projectDir);
-  ensure(projectDir, "src");
-  ensure(projectDir, "src/components");
-  ensure(projectDir, "src/store");
+  ensure(path.join(projectDir, "src"));
+  ensure(path.join(projectDir, "src/components"));
+  ensure(path.join(projectDir, "src/store"));
 
   /* -------------------------------------------------
   Dependencies
@@ -65,13 +101,13 @@ async function scaffoldReact(projectDir, options) {
 
   const deps = ["react", "react-dom"];
 
-  const dev = [
+  const devDeps = [
     "vite",
     options.ts ? "@vitejs/plugin-react-swc" : "@vitejs/plugin-react"
   ];
 
   if (options.ts) {
-    dev.push("typescript", "@types/react", "@types/react-dom");
+    devDeps.push("typescript", "@types/react", "@types/react-dom");
   }
 
   if (state === "zustand") deps.push("zustand");
@@ -85,14 +121,7 @@ async function scaffoldReact(projectDir, options) {
   if (state === "swr") deps.push("swr");
 
   if (useFramer) deps.push("framer-motion");
-
   if (useGsap) deps.push("gsap");
-
-  console.log("📦 Installing dependencies...");
-  await run("npm", ["install", ...deps], projectDir);
-
-  console.log("🛠 Installing dev dependencies...");
-  await run("npm", ["install", "-D", ...dev], projectDir);
 
   /* -------------------------------------------------
   package.json
@@ -105,7 +134,6 @@ async function scaffoldReact(projectDir, options) {
     : {};
 
   pkg.name = pkg.name || path.basename(projectDir);
-
   pkg.private = true;
   pkg.type = "module";
 
@@ -113,6 +141,16 @@ async function scaffoldReact(projectDir, options) {
     dev: "vite",
     build: (options.ts ? "tsc && " : "") + "vite build",
     preview: "vite preview"
+  };
+
+  pkg.dependencies = {
+    ...(pkg.dependencies || {}),
+    ...buildDepObject(deps)
+  };
+
+  pkg.devDependencies = {
+    ...(pkg.devDependencies || {}),
+    ...buildDepObject(devDeps)
   };
 
   write(pkgPath, JSON.stringify(pkg, null, 2));
@@ -159,7 +197,14 @@ export default defineConfig({
   });
 
   if (tailwindMeta?.deps?.length) {
-    await run("npm", ["install", "-D", ...tailwindMeta.deps], projectDir);
+
+    pkg.devDependencies = {
+      ...(pkg.devDependencies || {}),
+      ...buildDepObject(tailwindMeta.deps)
+    };
+
+    write(pkgPath, JSON.stringify(pkg, null, 2));
+
   }
 
   /* -------------------------------------------------
@@ -173,12 +218,9 @@ export default defineConfig({
 <html lang="en">
 
 <head>
-
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
 <title>${pkg.name}</title>
-
 </head>
 
 <body>
@@ -244,6 +286,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   ------------------------------------------------- */
 
   console.log(`\n📊 Project size : ${formatSize(dirSize(projectDir))}\n`);
+
+  /* -------------------------------------------------
+  Return dependencies to CLI
+  ------------------------------------------------- */
+
+  return {
+    deps,
+    devDeps
+  };
+
 }
 
 module.exports = { scaffoldReact };

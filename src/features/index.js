@@ -1,6 +1,5 @@
 const fs = require("fs")
 const path = require("path")
-const { execSync } = require("child_process")
 const { copyDir } = require("../utils")
 
 const features = require("./registry")
@@ -13,37 +12,33 @@ module.exports = async function runFeatures(projectDir, options) {
   function collect(result) {
     if (!result) return
 
-    if (result.deps) {
-      result.deps.forEach(d => deps.add(d))
-    }
+    if (result.deps) result.deps.forEach(d => deps.add(d))
+    if (result.devDeps) result.devDeps.forEach(d => devDeps.add(d))
+  }
 
-    if (result.devDeps) {
-      result.devDeps.forEach(d => devDeps.add(d))
-    }
+  function runFeature(name) {
+    const feature = features[name]
+    if (!feature || typeof feature.run !== "function") return null
+    return feature.run(projectDir, options)
   }
 
   /* --------------------------------
-  CORE FEATURES (always run)
+  CORE FEATURES
   -------------------------------- */
 
-  const core = [
-    "git",
-    "env",
-    "meta",
-    "seo"
-  ]
+  const core = ["git", "env", "meta", "seo"]
 
   for (const name of core) {
 
-    const feature = features[name]
+    try {
 
-    if (feature && typeof feature.run === "function") {
-
-      console.log(`⚙️  Running ${name}...`)
-
-      const result = await feature.run(projectDir, options)
+      const result = await runFeature(name)
 
       collect(result)
+
+    } catch (err) {
+
+      throw new Error(`Feature failed: ${name}\n${err.message}`)
 
     }
 
@@ -53,53 +48,23 @@ module.exports = async function runFeatures(projectDir, options) {
   OPTIONAL FEATURES
   -------------------------------- */
 
-  for (const name of Object.keys(features)) {
+  for (const [name, feature] of Object.entries(features)) {
 
     if (core.includes(name)) continue
+    if (!options[name]) continue
+    if (!feature || typeof feature.run !== "function") continue
 
-    const feature = features[name]
-
-    if (options[name] && feature && typeof feature.run === "function") {
-
-      console.log(`⚡ Adding ${name}...`)
+    try {
 
       const result = await feature.run(projectDir, options)
 
       collect(result)
 
+    } catch (err) {
+
+      throw new Error(`Feature failed: ${name}\n${err.message}`)
+
     }
-
-  }
-
-  /* --------------------------------
-  Install dependencies
-  -------------------------------- */
-
-  if (deps.size) {
-
-    console.log("\n📦 Installing dependencies...\n")
-
-    execSync(
-      `npm install ${[...deps].join(" ")}`,
-      {
-        cwd: projectDir,
-        stdio: "inherit"
-      }
-    )
-
-  }
-
-  if (devDeps.size) {
-
-    console.log("\n🛠 Installing dev dependencies...\n")
-
-    execSync(
-      `npm install -D ${[...devDeps].join(" ")}`,
-      {
-        cwd: projectDir,
-        stdio: "inherit"
-      }
-    )
 
   }
 
@@ -113,15 +78,14 @@ module.exports = async function runFeatures(projectDir, options) {
     const docsDest = path.join(projectDir, "docs")
 
     if (fs.existsSync(docsSrc)) {
-
       copyDir(docsSrc, docsDest)
-
-    } else {
-
-      console.warn("⚠️  Docs template not found, skipping docs generation.")
-
     }
 
+  }
+
+  return {
+    deps: [...deps],
+    devDeps: [...devDeps]
   }
 
 }
