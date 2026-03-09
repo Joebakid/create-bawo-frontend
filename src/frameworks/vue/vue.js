@@ -4,30 +4,31 @@ const fs = require("fs")
 const path = require("path")
 
 const { ensure, copyDir } = require("../../utils")
-const { installFont } = require("../../features/fonts")
+const fontsInstaller = require("../../features/fonts/installer")
 
-async function scaffoldVue(projectDir, options) {
+async function scaffoldVue(projectDir, options = {}) {
 
   const isTs = Boolean(options.ts)
+
   const templateDir = path.join(__dirname, "template")
 
-  console.log("🟢 Scaffolding Vue project from internal template")
+  console.log("Creating Vue project from template...")
 
-  /* -------------------------------------------------
+  /* ---------------------------------
   Ensure project directory exists
-  ------------------------------------------------- */
+  --------------------------------- */
 
   ensure(projectDir)
 
-  /* -------------------------------------------------
-  Copy template
-  ------------------------------------------------- */
+  /* ---------------------------------
+  Copy base Vue template
+  --------------------------------- */
 
   copyDir(templateDir, projectDir)
 
-  /* -------------------------------------------------
-  JS fallback when TypeScript disabled
-  ------------------------------------------------- */
+  /* ---------------------------------
+  Convert TypeScript → JavaScript
+  --------------------------------- */
 
   if (!isTs) {
 
@@ -53,25 +54,25 @@ async function scaffoldVue(projectDir, options) {
 
   }
 
-  /* -------------------------------------------------
+  /* ---------------------------------
   Fonts
-  ------------------------------------------------- */
+  --------------------------------- */
 
-  if (options.font) {
+  if (options.font && fontsInstaller?.addFont) {
 
-    console.log(`🎨 Installing font: ${options.font}`)
+    console.log("Installing font:", options.font)
 
-    installFont(options.font, projectDir, "vue")
+    await fontsInstaller.addFont(projectDir, options.font)
 
   }
 
-  /* -------------------------------------------------
-  GSAP helpers (feature handles dependency)
-  ------------------------------------------------- */
+  /* ---------------------------------
+  Optional GSAP helpers
+  --------------------------------- */
 
   if (options.gsap) {
 
-    console.log("🎞️ Adding GSAP helpers...")
+    console.log("Adding GSAP helpers...")
 
     const gsapSrc = path.join(
       __dirname,
@@ -84,22 +85,14 @@ async function scaffoldVue(projectDir, options) {
     )
 
     if (fs.existsSync(gsapSrc)) {
-
       copyDir(gsapSrc, gsapDest)
-
-    } else {
-
-      console.warn("⚠️ GSAP helpers not found")
-
     }
 
   }
 
-  /* -------------------------------------------------
-  Done
-  ------------------------------------------------- */
+  console.log("Vue scaffold complete")
 
-  console.log("✅ Vue scaffold complete")
+  return projectDir
 
 }
 
@@ -113,7 +106,10 @@ function replaceInFile(file, from, to) {
 
   const content = fs.readFileSync(file, "utf8")
 
-  fs.writeFileSync(file, content.replaceAll(from, to))
+  fs.writeFileSync(
+    file,
+    content.replaceAll(from, to)
+  )
 
 }
 

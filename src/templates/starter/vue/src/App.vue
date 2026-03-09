@@ -1,19 +1,17 @@
-/* Inside your Vue scaffold logic */
-write(
-  path.join(projectDir, "src/App.vue"),
-  `<template>
+<template>
   <main class="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 antialiased">
     <div class="w-full max-w-2xl px-6">
-      
+
       <div class="bg-white rounded-3xl border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-10 md:p-16 text-center space-y-8">
-        
+
         <div class="space-y-4">
           <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 uppercase">
             Create-Bawo-Frontend
           </h1>
+
           <p class="text-slate-600 text-lg max-w-md mx-auto leading-relaxed">
-            A zero-config CLI to scaffold modern React (Vite), Next.js, and Vue 
-            apps with Tailwind CSS, state management, and best practices.
+            A zero-config CLI to scaffold modern React (Vite), Next.js, and Vue
+            apps with Tailwind CSS and best practices.
           </p>
         </div>
 
@@ -21,7 +19,7 @@ write(
           <a
             href="https://create-bawo-frontend.vercel.app/docs"
             target="_blank"
-            class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition-all shadow-md active:scale-95"
+            class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition-all"
           >
             Get Started
           </a>
@@ -29,7 +27,7 @@ write(
           <a
             href="https://github.com/Joebakid/create-bawo-frontend"
             target="_blank"
-            class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-8 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+            class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-8 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
           >
             GitHub
           </a>
@@ -44,5 +42,4 @@ write(
       </div>
     </div>
   </main>
-</template>`.trim()
-);
+</template>
