@@ -7,23 +7,19 @@ const path = require("path");
 const getFlags = require("../src/cli/flags");
 const applyPreset = require("../src/cli/presets");
 const { promptMissing } = require("../src/cli/prompts");
+const applyPositional = require("../src/cli/positional");
 
 const runFramework = require("../src/frameworks");
 const runFeatures = require("../src/features");
 
 const { run } = require("../src/utils");
 
-const logger = require("../src/utils/logger");
-const spinner = require("../src/utils/spinner");
-const progress = require("../src/utils/progress");
-
 /* -------------------------------
 Handle Ctrl+C
 -------------------------------- */
 
 process.on("SIGINT", () => {
-  console.log("\n");
-  logger.error("Setup cancelled.");
+  console.log("\nSetup cancelled.");
   process.exit(1);
 });
 
@@ -36,11 +32,24 @@ async function main() {
   console.clear();
 
   let options = getFlags();
-  options.name = options._?.[0] || options.name;
+
+  /* -------------------------------
+  Apply positional arguments
+  -------------------------------- */
+
+  options = applyPositional(options);
+
+  /* -------------------------------
+  Apply preset
+  -------------------------------- */
 
   if (options.preset) {
     Object.assign(options, applyPreset(options));
   }
+
+  /* -------------------------------
+  Prompts
+  -------------------------------- */
 
   if (!(options.y || options.yes)) {
 
@@ -54,113 +63,88 @@ async function main() {
     options.tailwind ??= "v3";
     options["state-mgmt"] ??= "none";
     options.font ??= "inter";
+    options.start ??= true;
 
   }
+
+  /* -------------------------------
+  Project directory
+  -------------------------------- */
 
   const projectDir = path.resolve(process.cwd(), options.name);
 
   if (fs.existsSync(projectDir)) {
-    logger.error(`Directory "${options.name}" already exists.`);
+    console.error(`Directory "${options.name}" already exists.`);
     process.exit(1);
   }
 
-  logger.create(
-    `Creating ${options.framework.toUpperCase()} project: ${options.name}`
-  );
-
-  const steps = 3;
-  const bar = progress.create(steps);
+  console.log(`\nCreating ${options.framework} project: ${options.name}\n`);
 
   /* -------------------------------
   Framework
   -------------------------------- */
 
-  const frameworkSpinner = spinner.start("Scaffolding framework");
+  console.log("Scaffolding project...");
 
-  try {
+  await runFramework(projectDir, options);
 
-    await runFramework(projectDir, options);
+  /* -------------------------------
+  Install framework dependencies
+  -------------------------------- */
 
-    spinner.succeed(frameworkSpinner, "Framework scaffolded");
+  console.log("Installing framework dependencies...");
 
-  } catch (err) {
-
-    spinner.fail(frameworkSpinner, "Framework setup failed");
-
-    throw err;
-
-  }
-
-  progress.step(bar);
+  await run("npm", ["install"], projectDir);
 
   /* -------------------------------
   Features
   -------------------------------- */
 
-  const featureSpinner = spinner.start("Installing project features");
+  console.log("Installing features...");
 
-  try {
-
-    await runFeatures(projectDir, options);
-
-    spinner.succeed(featureSpinner, "Features installed");
-
-  } catch (err) {
-
-    spinner.fail(featureSpinner, "Feature installation failed");
-
-    throw err;
-
-  }
-
-  progress.step(bar);
+  const result = await runFeatures(projectDir, options);
 
   /* -------------------------------
-  Install Dependencies (ONE TIME)
+  Install feature dependencies
   -------------------------------- */
 
-  const installSpinner = spinner.start("Installing dependencies");
-
-  try {
-
-    await run("npm", ["install"], projectDir);
-
-    spinner.succeed(installSpinner, "Dependencies installed");
-
-  } catch (err) {
-
-    spinner.fail(installSpinner, "Dependency installation failed");
-
-    throw err;
-
+  if (result?.deps?.length) {
+    await run("npm", ["install", ...result.deps], projectDir);
   }
 
-  progress.step(bar);
+  if (result?.devDeps?.length) {
+    await run("npm", ["install", "-D", ...result.devDeps], projectDir);
+  }
 
-  progress.done(bar);
+  /* -------------------------------
+  Done
+  -------------------------------- */
 
-  console.log("");
+  console.log("\nProject ready\n");
 
-  logger.success("Project ready!\n");
+  console.log(`cd ${options.name}`);
 
-  console.log(`📁 Location`);
-  console.log(`   ${projectDir}\n`);
+  if (options.start) {
 
-  console.log(`Next steps:\n`);
+    console.log("\nStarting dev server...\n");
 
-  console.log(`   cd ${options.name}`);
-  console.log(`   npm run dev\n`);
+    await run("npm", ["run", "dev"], projectDir);
 
-  console.log(`Happy coding 🚀\n`);
+  } else {
+
+    console.log("npm run dev\n");
+
+  }
 
 }
 
+/* -------------------------------
+Error handler
+-------------------------------- */
+
 main().catch((err) => {
 
-  console.log("");
-
-  logger.error("Error creating project");
-
+  console.error("\nError creating project");
   console.error(err);
 
   process.exit(1);

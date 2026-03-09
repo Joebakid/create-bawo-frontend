@@ -112,21 +112,28 @@ async function promptMissing(options) {
 
   if (!options.tailwind) {
 
+    const isVue = options.framework === "vue"
+
+    const choices = [
+      { title: "v3", value: "v3" }
+    ]
+
+    if (!isVue) {
+      choices.push({ title: "v4", value: "v4" })
+    }
+
     const { tailwind } = await prompts({
       type: "select",
       name: "tailwind",
       message: "Tailwind version",
-      choices: [
-        { title: "v3", value: "v3" },
-        { title: "v4", value: "v4" }
-      ]
+      choices
     })
 
     options.tailwind = tailwind
   }
 
   /* -------------------------------------------------
-  UI framework (React only)
+  UI framework (React / Next only)
   ------------------------------------------------- */
 
   if (
@@ -161,7 +168,7 @@ async function promptMissing(options) {
   }
 
   /* -------------------------------------------------
-  State management (React only)
+  State management (React / Next only)
   ------------------------------------------------- */
 
   if (
@@ -212,6 +219,22 @@ async function promptMissing(options) {
     options.firebase = backend === "firebase"
     options.appwrite = backend === "appwrite"
     options.pocketbase = backend === "pocketbase"
+  }
+
+  /* -------------------------------------------------
+  Auto start dev server
+  ------------------------------------------------- */
+
+  if (options.start === undefined) {
+
+    const { start } = await prompts({
+      type: "confirm",
+      name: "start",
+      message: "Start dev server automatically?",
+      initial: true
+    })
+
+    options.start = start
   }
 
   return options
