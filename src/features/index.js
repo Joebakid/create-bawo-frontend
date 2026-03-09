@@ -1,3 +1,4 @@
+const fs = require("fs")
 const path = require("path")
 const { execSync } = require("child_process")
 const { copyDir } = require("../utils")
@@ -37,9 +38,13 @@ module.exports = async function runFeatures(projectDir, options) {
     const feature = features[name]
 
     if (feature && typeof feature.run === "function") {
+
       console.log(`⚙️  Running ${name}...`)
+
       const result = await feature.run(projectDir, options)
+
       collect(result)
+
     }
 
   }
@@ -55,9 +60,13 @@ module.exports = async function runFeatures(projectDir, options) {
     const feature = features[name]
 
     if (options[name] && feature && typeof feature.run === "function") {
+
       console.log(`⚡ Adding ${name}...`)
+
       const result = await feature.run(projectDir, options)
+
       collect(result)
+
     }
 
   }
@@ -67,6 +76,7 @@ module.exports = async function runFeatures(projectDir, options) {
   -------------------------------- */
 
   if (deps.size) {
+
     console.log("\n📦 Installing dependencies...\n")
 
     execSync(
@@ -76,9 +86,11 @@ module.exports = async function runFeatures(projectDir, options) {
         stdio: "inherit"
       }
     )
+
   }
 
   if (devDeps.size) {
+
     console.log("\n🛠 Installing dev dependencies...\n")
 
     execSync(
@@ -88,6 +100,7 @@ module.exports = async function runFeatures(projectDir, options) {
         stdio: "inherit"
       }
     )
+
   }
 
   /* --------------------------------
@@ -96,10 +109,18 @@ module.exports = async function runFeatures(projectDir, options) {
 
   if (!options["skip-docs"]) {
 
-    copyDir(
-      path.join(__dirname, "../templates/docs"),
-      path.join(projectDir, "docs")
-    )
+    const docsSrc = path.join(__dirname, "../templates/docs")
+    const docsDest = path.join(projectDir, "docs")
+
+    if (fs.existsSync(docsSrc)) {
+
+      copyDir(docsSrc, docsDest)
+
+    } else {
+
+      console.warn("⚠️  Docs template not found, skipping docs generation.")
+
+    }
 
   }
 

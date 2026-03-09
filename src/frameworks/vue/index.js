@@ -1,63 +1,47 @@
-#!/usr/bin/env node
 /* eslint-disable no-console */
 
-const prompts = require("prompts");
+const path = require("path");
 const { scaffoldVue } = require("./vue");
 
-async function runVue(projectDir, options) {
+async function runVue(projectDir, options = {}) {
 
-/* ---------------------------------------------
-GSAP Prompt (safe handling)
---------------------------------------------- */
+  console.log("🔧 Starting Vue framework setup...");
+  console.log("📁 Project directory:", projectDir);
 
-if (options.gsap === undefined) {
-
-const response = await prompts(
-  {
-    type: "confirm",
-    name: "gsap",
-    message: "Use GSAP animations?",
-    initial: false
-  },
-  {
-    onCancel: () => {
-      console.log("\n⚠️ Setup cancelled.");
-      process.exit(1);
-    }
+  if (!projectDir) {
+    throw new Error("Project directory is required for Vue scaffold.");
   }
-);
 
-options.gsap = Boolean(response.gsap);
+  const resolvedDir = path.resolve(projectDir);
+  console.log("📂 Resolved directory:", resolvedDir);
 
-}
+  const vueOptions = {
+    ts: Boolean(options.ts),
+    tailwind: options.tailwind || "v3",
+    font: options.font || null,
+    stateMgmt: null,
+    gsap: Boolean(options.gsap)
+  };
 
-/* ---------------------------------------------
-Normalize Vue options
---------------------------------------------- */
+  console.log("📦 Vue options:", vueOptions);
 
-const vueOptions = {
+  try {
 
-ts: Boolean(options.ts),
+    console.log("🚀 Running Vue scaffold...");
 
-tailwind: options.tailwind || "v3",
+    await scaffoldVue(resolvedDir, vueOptions);
 
-font: options.font || null,
+    console.log("✅ Vue scaffold complete.");
 
-// Vue does not use React state managers
-stateMgmt: null,
+  } catch (err) {
 
-gsap: Boolean(options.gsap)
+    console.error("❌ Vue scaffold failed.");
+    console.error(err);
+    process.exit(1);
 
-};
+  }
 
-console.log("🚀 Scaffolding Vue project...");
-
-await scaffoldVue(projectDir, vueOptions);
-
-console.log("✅ Vue scaffold complete.");
-
-return projectDir;
-
+  return resolvedDir;
 }
 
 module.exports = { run: runVue };

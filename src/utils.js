@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
@@ -6,58 +7,89 @@ const { spawnSync } = require("child_process");
 /* ---------------------------------
  * File helpers
  * --------------------------------- */
-const write = (p, c) => {
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, c);
-};
 
-const ensure = (p) => fs.mkdirSync(p, { recursive: true });
+function write(filePath, content) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content);
+}
 
-const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "");
+function ensure(dirPath) {
+  fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function read(filePath) {
+  return fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
+}
 
 /* ---------------------------------
  * Command runner
  * --------------------------------- */
-const run = (cmd, args, cwd) => {
-  const r = spawnSync(cmd, args, {
+
+function run(cmd, args = [], cwd = process.cwd()) {
+
+  const result = spawnSync(cmd, args, {
     stdio: "inherit",
     cwd,
     shell: process.platform === "win32",
   });
 
-  if (r.status !== 0) process.exit(r.status || 1);
-};
+  if (result.error) {
+    console.error("Command failed:", cmd, args.join(" "));
+    console.error(result.error);
+    process.exit(1);
+  }
+
+  if (result.status !== 0) {
+    process.exit(result.status || 1);
+  }
+}
 
 /* ---------------------------------
- * ✅ COPY DIRECTORY (REQUIRED)
+ * Copy directory recursively
  * --------------------------------- */
-const copyDir = (src, dest) => {
-  if (!fs.existsSync(src)) return;
+
+function copyDir(src, dest) {
+
+  if (!fs.existsSync(src)) {
+    throw new Error(`Source directory not found: ${src}`);
+  }
 
   fs.mkdirSync(dest, { recursive: true });
 
-  for (const entry of fs.readdirSync(src)) {
-    const srcPath = path.join(src, entry);
-    const destPath = path.join(dest, entry);
+  const entries = fs.readdirSync(src, { withFileTypes: true });
 
-    if (fs.statSync(srcPath).isDirectory()) {
+  for (const entry of entries) {
+
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
       copyDir(srcPath, destPath);
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
+
   }
-};
+}
 
 /* ---------------------------------
  * Package version
  * --------------------------------- */
+
 const pkgVersion = (() => {
+
   try {
-    return require(path.join(__dirname, "..", "package.json")).version || "0.0.0";
+    const pkg = require(path.join(__dirname, "..", "package.json"));
+    return pkg.version || "0.0.0";
   } catch {
     return "0.0.0";
   }
+
 })();
+
+/* ---------------------------------
+ * Exports
+ * --------------------------------- */
 
 module.exports = {
   fs,
@@ -66,6 +98,6 @@ module.exports = {
   ensure,
   read,
   run,
-  copyDir,      // ✅ EXPORT
+  copyDir,
   pkgVersion,
 };
