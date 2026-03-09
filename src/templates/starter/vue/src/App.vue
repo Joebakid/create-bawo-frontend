@@ -1,32 +1,48 @@
-<template>
-  <main class="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-    <div class="max-w-xl text-center space-y-6 px-6">
-      <h1 class="text-4xl font-bold">Create Bawo Frontend</h1>
+/* Inside your Vue scaffold logic */
+write(
+  path.join(projectDir, "src/App.vue"),
+  `<template>
+  <main class="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 antialiased">
+    <div class="w-full max-w-2xl px-6">
+      
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-10 md:p-16 text-center space-y-8">
+        
+        <div class="space-y-4">
+          <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 uppercase">
+            Create-Bawo-Frontend
+          </h1>
+          <p class="text-slate-600 text-lg max-w-md mx-auto leading-relaxed">
+            A zero-config CLI to scaffold modern React (Vite), Next.js, and Vue 
+            apps with Tailwind CSS, state management, and best practices.
+          </p>
+        </div>
 
-      <p class="text-slate-400 text-lg">
-        A zero-config frontend framework for modern developers.
-      </p>
+        <div class="flex flex-wrap justify-center gap-4 pt-2">
+          <a
+            href="https://create-bawo-frontend.vercel.app/docs"
+            target="_blank"
+            class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition-all shadow-md active:scale-95"
+          >
+            Get Started
+          </a>
 
-      <div class="flex justify-center gap-4 pt-2">
-        <a
-          href="/docs"
-          class="rounded-md bg-emerald-600 px-4 py-2"
-        >
-          Documentation
-        </a>
+          <a
+            href="https://github.com/Joebakid/create-bawo-frontend"
+            target="_blank"
+            class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-8 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+          >
+            GitHub
+          </a>
+        </div>
 
-        <a
-          href="https://github.com/Joebakid/create-bawo-frontend"
-          target="_blank"
-          class="rounded-md border border-slate-700 px-4 py-2"
-        >
-          GitHub
-        </a>
+        <div class="pt-6 border-t border-slate-100">
+          <p class="text-xs font-mono text-slate-400 uppercase tracking-widest">
+            Edit <span class="text-slate-900 font-bold">src/App.vue</span> to get started
+          </p>
+        </div>
+
       </div>
-
-      <p class="pt-6 text-xs text-slate-500">
-        Edit <code class="font-mono">src/App.vue</code> to get started
-      </p>
     </div>
   </main>
-</template>
+</template>`.trim()
+);
