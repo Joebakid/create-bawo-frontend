@@ -198,29 +198,46 @@ async function promptMissing(options) {
   Backend Services
   ------------------------------------------------- */
 
-  if (!options.backend) {
+ /* -------------------------------------------------
+Backend Services
+------------------------------------------------- */
 
-    const { backend } = await prompts({
-      type: "select",
-      name: "backend",
-      message: "Choose backend service",
-      choices: [
-        { title: "None", value: "none" },
-        { title: "Supabase", value: "supabase" },
-        { title: "Firebase", value: "firebase" },
-        { title: "Appwrite", value: "appwrite" },
-        { title: "PocketBase", value: "pocketbase" }
-      ]
-    })
+if (!options.backend) {
 
-    options.backend = backend
+  /* detect CLI backend flags */
 
-    options.supabase = backend === "supabase"
-    options.firebase = backend === "firebase"
-    options.appwrite = backend === "appwrite"
-    options.pocketbase = backend === "pocketbase"
-  }
+  if (options.supabase) options.backend = "supabase"
+  if (options.firebase) options.backend = "firebase"
+  if (options.appwrite) options.backend = "appwrite"
+  if (options.pocketbase) options.backend = "pocketbase"
 
+}
+
+if (!options.backend) {
+
+  const { backend } = await prompts({
+    type: "select",
+    name: "backend",
+    message: "Choose backend service",
+    choices: [
+      { title: "None", value: "none" },
+      { title: "Supabase", value: "supabase" },
+      { title: "Firebase", value: "firebase" },
+      { title: "Appwrite", value: "appwrite" },
+      { title: "PocketBase", value: "pocketbase" }
+    ]
+  })
+
+  options.backend = backend
+
+}
+
+/* sync flags */
+
+options.supabase = options.backend === "supabase"
+options.firebase = options.backend === "firebase"
+options.appwrite = options.backend === "appwrite"
+options.pocketbase = options.backend === "pocketbase"
   /* -------------------------------------------------
   Auto start dev server
   ------------------------------------------------- */

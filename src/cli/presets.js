@@ -1,35 +1,55 @@
 function applyPreset(options) {
 
-  switch (options.preset) {
+  const preset = options.preset
+
+  let presetOptions = {}
+
+  switch (preset) {
 
     case "minimal":
-      return {
+      presetOptions = {
         ts: false,
         framer: false,
         gsap: false,
         ui: "none",
         "state-mgmt": "none"
       }
+      break
 
     case "animation":
-      return {
+      presetOptions = {
         framer: true,
         gsap: true
       }
+      break
 
     case "full":
-      return {
+      presetOptions = {
         ts: true,
         framer: true,
         gsap: true,
         ui: "shadcn",
         "state-mgmt": "redux"
       }
+      break
 
     default:
-      return {}
-
+      presetOptions = {}
   }
+
+  /* --------------------------------
+  Do not override CLI flags
+  -------------------------------- */
+
+  const result = {}
+
+  for (const key in presetOptions) {
+    if (options[key] === undefined) {
+      result[key] = presetOptions[key]
+    }
+  }
+
+  return result
 
 }
 

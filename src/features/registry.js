@@ -2,55 +2,56 @@ const fs = require("fs")
 const path = require("path")
 
 /* --------------------------------
-Core features (always available)
+Core features
 -------------------------------- */
 
 const core = {
   git: require("./git"),
   env: require("./env"),
-  meta: require("./meta")
+  meta: require("./meta"),
+  seo: require("./seo")
 }
 
 /* --------------------------------
-Auto-load optional features
+Load optional features
 -------------------------------- */
 
 function loadOptionalFeatures() {
 
   const dir = __dirname
-
-  const folders = fs
-    .readdirSync(dir)
-    .filter(f => {
-
-      const full = path.join(dir, f)
-
-      if (!fs.statSync(full).isDirectory()) return false
-
-      /* ignore core folders already loaded */
-      if (["git", "env", "meta"].includes(f)) return false
-
-      return true
-
-    })
-
   const features = {}
+
+  const folders = fs.readdirSync(dir)
 
   for (const folder of folders) {
 
+    const full = path.join(dir, folder)
+
+    if (!fs.statSync(full).isDirectory()) continue
+    if (core[folder]) continue
+
     try {
-      features[folder] = require(`./${folder}`)
+
+      const feature = require(`./${folder}`)
+
+      if (feature && typeof feature.run === "function") {
+        features[folder] = feature
+      }
+
     } catch (err) {
-      console.warn(`⚠️ Failed to load feature: ${folder}`)
+
+      console.warn(`⚠ Failed to load feature: ${folder}`)
+
     }
 
   }
 
   return features
+
 }
 
 /* --------------------------------
-Merge core + optional
+Export registry
 -------------------------------- */
 
 module.exports = {

@@ -41,7 +41,7 @@ module.exports = {
   alegreya: { family: "Alegreya", url: "https://fonts.googleapis.com/css2?family=Alegreya:wght@100..900&display=swap" },
   vollkorn: { family: "Vollkorn", url: "https://fonts.googleapis.com/css2?family=Vollkorn:wght@100..900&display=swap" },
   ptSerif: { family: "PT Serif", url: "https://fonts.googleapis.com/css2?family=PT+Serif:wght@400;700&display=swap" },
-  spectalElite: { family: "Special Elite", url: "https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" },
+  spectralElite: { family: "Special Elite", url: "https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" },
 
   jetBrainsMono: { family: "JetBrains Mono", url: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..900&display=swap" },
   firaCode: { family: "Fira Code", url: "https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap" },
@@ -53,4 +53,25 @@ module.exports = {
   courierPrime: { family: "Courier Prime", url: "https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" },
   anonymousPro: { family: "Anonymous Pro", url: "https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&display=swap" },
   victorMono: { family: "Victor Mono", url: "https://fonts.googleapis.com/css2?family=Victor+Mono:wght@100..700&display=swap" },
+
+  // ─── Modern & Small ───────────────────────────────────────────────────────
+  geist: { family: "Geist", url: "https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" },
+  interTight: { family: "Inter Tight", url: "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@100..900&display=swap" },
+  barlow: { family: "Barlow", url: "https://fonts.googleapis.com/css2?family=Barlow:wght@100..900&display=swap" },
+  notoSans: { family: "Noto Sans", url: "https://fonts.googleapis.com/css2?family=Noto+Sans:wght@100..900&display=swap" },
+
+  // ─── Elegant & Bold ───────────────────────────────────────────────────────
+  bodoniModa: { family: "Bodoni Moda", url: "https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@400..900&display=swap" },
+  fraunces: { family: "Fraunces", url: "https://fonts.googleapis.com/css2?family=Fraunces:wght@100..900&display=swap" },
+  dmSerifDisplay: { family: "DM Serif Display", url: "https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" },
+  clashDisplay: { family: "Clash Display", url: "https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" },
+
+  // ─── Robotic / Techie ─────────────────────────────────────────────────────
+  orbitron: { family: "Orbitron", url: "https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" },
+  exo2: { family: "Exo 2", url: "https://fonts.googleapis.com/css2?family=Exo+2:wght@100..900&display=swap" },
+  rajdhani: { family: "Rajdhani", url: "https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap" },
+  saira: { family: "Saira", url: "https://fonts.googleapis.com/css2?family=Saira:wght@100..900&display=swap" },
+
+  // ─── Apple-style ──────────────────────────────────────────────────────────
+  nunitoSans: { family: "Nunito Sans", url: "https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@200..900&display=swap" },
 };

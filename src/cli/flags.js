@@ -35,11 +35,41 @@ function getFlags() {
       describe: "UI library (shadcn)"
     })
 
-    /* State */
+    /* State Management */
 
     .option("state-mgmt", {
       type: "string",
       describe: "State management (redux, rtk-query, react-query, swr, zustand, context)"
+    })
+
+    .option("redux", {
+      type: "boolean",
+      describe: "Use Redux"
+    })
+
+    .option("zustand", {
+      type: "boolean",
+      describe: "Use Zustand"
+    })
+
+    .option("context", {
+      type: "boolean",
+      describe: "Use Context API"
+    })
+
+    .option("react-query", {
+      type: "boolean",
+      describe: "Use React Query"
+    })
+
+    .option("rtk-query", {
+      type: "boolean",
+      describe: "Use RTK Query"
+    })
+
+    .option("swr", {
+      type: "boolean",
+      describe: "Use SWR"
     })
 
     /* Animations */
@@ -52,6 +82,28 @@ function getFlags() {
     .option("gsap", {
       type: "boolean",
       describe: "Install GSAP animations"
+    })
+
+    /* Backend Services */
+
+    .option("supabase", {
+      type: "boolean",
+      describe: "Install Supabase backend"
+    })
+
+    .option("firebase", {
+      type: "boolean",
+      describe: "Install Firebase backend"
+    })
+
+    .option("appwrite", {
+      type: "boolean",
+      describe: "Install Appwrite backend"
+    })
+
+    .option("pocketbase", {
+      type: "boolean",
+      describe: "Install PocketBase backend"
     })
 
     /* Fonts */
@@ -113,8 +165,10 @@ function getFlags() {
       describe: "Skip prompts"
     })
 
+    .strict(false)
     .help()
     .parse()
+
 }
 
 module.exports = getFlags

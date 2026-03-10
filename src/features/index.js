@@ -12,13 +12,22 @@ module.exports = async function runFeatures(projectDir, options) {
   function collect(result) {
     if (!result) return
 
-    if (result.deps) result.deps.forEach(d => deps.add(d))
-    if (result.devDeps) result.devDeps.forEach(d => devDeps.add(d))
+    if (result.deps) {
+      result.deps.forEach(d => deps.add(d))
+    }
+
+    if (result.devDeps) {
+      result.devDeps.forEach(d => devDeps.add(d))
+    }
   }
 
   function runFeature(name) {
     const feature = features[name]
-    if (!feature || typeof feature.run !== "function") return null
+
+    if (!feature || typeof feature.run !== "function") {
+      return null
+    }
+
     return feature.run(projectDir, options)
   }
 
@@ -33,7 +42,6 @@ module.exports = async function runFeatures(projectDir, options) {
     try {
 
       const result = await runFeature(name)
-
       collect(result)
 
     } catch (err) {
@@ -51,13 +59,19 @@ module.exports = async function runFeatures(projectDir, options) {
   for (const [name, feature] of Object.entries(features)) {
 
     if (core.includes(name)) continue
-    if (!options[name]) continue
     if (!feature || typeof feature.run !== "function") continue
+
+    const isBackend = options.backend === name
+    const isFlag = options[name] === true
+
+    // Special cases: string-based features
+    const isFont = name === "fonts" && !!options.font
+
+    if (!(isBackend || isFlag || isFont)) continue
 
     try {
 
-      const result = await feature.run(projectDir, options)
-
+      const result = await runFeature(name)
       collect(result)
 
     } catch (err) {

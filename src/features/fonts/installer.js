@@ -1,12 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-
 const registry = require("./registry");
-const { ensure } = require("../../utils");
-
-/**
- * Install selected font
- */
 
 async function addFont(projectDir, fontKey) {
 
@@ -17,106 +11,60 @@ async function addFont(projectDir, fontKey) {
     return;
   }
 
-  /* -------------------------------------------------
-   * Detect framework
-   * ------------------------------------------------- */
-
   const isNext = fs.existsSync(path.join(projectDir, "app"));
-  const isVue = fs.existsSync(path.join(projectDir, "src/main.ts")) ||
-                fs.existsSync(path.join(projectDir, "src/main.js"));
 
   /* -------------------------------------------------
-   * Determine styles directory
+   * Find the globals CSS file
    * ------------------------------------------------- */
 
-  const stylesDir = isNext
-    ? path.join(projectDir, "app/styles")
-    : path.join(projectDir, "src/styles");
+  const candidates = isNext
+    ? ["app/globals.css", "src/app/globals.css"]
+    : ["src/globals.css", "src/index.css", "src/styles/globals.css", "globals.css"];
 
-  ensure(stylesDir);
+  let cssPath = null;
 
-  const cssPath = path.join(stylesDir, "fonts.css");
-
-  /* -------------------------------------------------
-   * CSS
-   * ------------------------------------------------- */
-
-  const css = `
-@import url("${font.url}");
-
-:root {
-  --font-sans: "${font.family}", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-body {
-  font-family: var(--font-sans);
-}
-`;
-
-  fs.writeFileSync(cssPath, css.trim() + "\n");
-
-  /* -------------------------------------------------
-   * Inject import
-   * ------------------------------------------------- */
-
-  injectFontImport(projectDir, isNext, isVue);
-
-}
-
-/* -------------------------------------------------
- * Inject CSS import into entry file
- * ------------------------------------------------- */
-
-function injectFontImport(projectDir, isNext, isVue) {
-
-  const importLine = `import "./styles/fonts.css";\n`;
-
-  let targets;
-
-  if (isNext) {
-
-    targets = [
-      "app/layout.tsx",
-      "app/layout.jsx"
-    ];
-
-  } else if (isVue) {
-
-    targets = [
-      "src/main.ts",
-      "src/main.js"
-    ];
-
-  } else {
-
-    // React
-    targets = [
-      "src/main.tsx",
-      "src/main.jsx",
-      "src/main.ts",
-      "src/main.js"
-    ];
-
+  for (const candidate of candidates) {
+    const full = path.join(projectDir, candidate);
+    if (fs.existsSync(full)) {
+      cssPath = full;
+      break;
+    }
   }
 
-  for (const file of targets) {
-
-    const fullPath = path.join(projectDir, file);
-
-    if (!fs.existsSync(fullPath)) continue;
-
-    const content = fs.readFileSync(fullPath, "utf8");
-
-    if (content.includes("fonts.css")) return;
-
-    fs.writeFileSync(fullPath, importLine + content);
-
+  if (!cssPath) {
+    console.warn(`⚠️ Could not find globals CSS file, skipping font inject`);
     return;
+  }
 
+  /* -------------------------------------------------
+   * Inject font AFTER @import statements
+   * ------------------------------------------------- */
+
+  const existing = fs.readFileSync(cssPath, "utf8");
+
+  if (existing.includes(font.url)) return; // already injected
+
+  const fontBlock = `\n@import url("${font.url}");\n\n:root {\n  --font-sans: "${font.family}", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;\n}\n\nbody {\n  font-family: var(--font-sans);\n}\n`;
+
+  // Insert after the last @import line
+  const lines = existing.split("\n");
+  let lastImportIndex = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim().startsWith("@import")) {
+      lastImportIndex = i;
+    }
+  }
+
+  if (lastImportIndex === -1) {
+    // No @import found, just prepend
+    fs.writeFileSync(cssPath, fontBlock + existing);
+  } else {
+    // Insert after the last @import line
+    lines.splice(lastImportIndex + 1, 0, fontBlock);
+    fs.writeFileSync(cssPath, lines.join("\n"));
   }
 
 }
 
-module.exports = {
-  addFont
-};
+module.exports = { addFont };

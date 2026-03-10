@@ -41,10 +41,12 @@ module.exports = function applyPositional(options, logger) {
   Backend flags
   -------------------------------- */
 
-  options.supabase = backendArg === "supabase"
-  options.firebase = backendArg === "firebase"
-  options.appwrite = backendArg === "appwrite"
-  options.pocketbase = backendArg === "pocketbase"
+  if (backendArg) {
+    options.supabase = backendArg === "supabase"
+    options.firebase = backendArg === "firebase"
+    options.appwrite = backendArg === "appwrite"
+    options.pocketbase = backendArg === "pocketbase"
+  }
 
   return options
 
