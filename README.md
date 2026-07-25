@@ -20,6 +20,7 @@
 - 🔥 **Auto-start dev server** for immediate development
 - 📦 **Zero configuration** - works out of the box
 - 🎯 **TypeScript support** with proper configurations
+- 🗄 **Backend Integrations**: Instantly configure Supabase, Firebase, Appwrite, PocketBase, or **Neon (Serverless Postgres)**
 
 ### Vue includes:
 
