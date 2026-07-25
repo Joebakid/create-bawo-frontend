@@ -106,6 +106,11 @@ function getFlags() {
       describe: "Install PocketBase backend"
     })
 
+    .option("neon", {
+      type: "boolean",
+      describe: "Install Neon database backend"
+    })
+
     /* Fonts */
 
     .option("font", {

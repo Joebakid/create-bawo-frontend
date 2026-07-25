@@ -210,6 +210,7 @@ if (!options.backend) {
   if (options.firebase) options.backend = "firebase"
   if (options.appwrite) options.backend = "appwrite"
   if (options.pocketbase) options.backend = "pocketbase"
+  if (options.neon) options.backend = "neon"
 
 }
 
@@ -224,7 +225,8 @@ if (!options.backend) {
       { title: "Supabase", value: "supabase" },
       { title: "Firebase", value: "firebase" },
       { title: "Appwrite", value: "appwrite" },
-      { title: "PocketBase", value: "pocketbase" }
+      { title: "PocketBase", value: "pocketbase" },
+      { title: "Neon", value: "neon" }
     ]
   })
 
@@ -238,6 +240,7 @@ options.supabase = options.backend === "supabase"
 options.firebase = options.backend === "firebase"
 options.appwrite = options.backend === "appwrite"
 options.pocketbase = options.backend === "pocketbase"
+options.neon = options.backend === "neon"
   /* -------------------------------------------------
   Auto start dev server
   ------------------------------------------------- */

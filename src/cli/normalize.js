@@ -8,11 +8,13 @@ module.exports = function normalizeOptions(options) {
   if (options.firebase) options.backend = "firebase"
   if (options.appwrite) options.backend = "appwrite"
   if (options.pocketbase) options.backend = "pocketbase"
+  if (options.neon) options.backend = "neon"
 
   options.supabase = options.backend === "supabase"
   options.firebase = options.backend === "firebase"
   options.appwrite = options.backend === "appwrite"
   options.pocketbase = options.backend === "pocketbase"
+  options.neon = options.backend === "neon"
 
   /* -----------------------------
   State shortcuts

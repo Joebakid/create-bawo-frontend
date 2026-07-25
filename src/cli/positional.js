@@ -25,7 +25,7 @@ module.exports = function applyPositional(options, logger) {
   -------------------------------- */
 
   const frameworks = ["react", "next", "vue", "svelte"]
-  const backends = ["supabase", "firebase", "appwrite", "pocketbase"]
+  const backends = ["supabase", "firebase", "appwrite", "pocketbase","neon"]
 
   if (frameworkArg && !frameworks.includes(frameworkArg)) {
     logger.error(`Unknown framework: ${frameworkArg}`)
@@ -46,6 +46,7 @@ module.exports = function applyPositional(options, logger) {
     options.firebase = backendArg === "firebase"
     options.appwrite = backendArg === "appwrite"
     options.pocketbase = backendArg === "pocketbase"
+    options.neon = backendArg === "neon"
   }
 
   return options
